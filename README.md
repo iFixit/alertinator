@@ -39,7 +39,39 @@ reasonable subset of features at a fraction of the cost.
 
 ## Usage
 
-TODO
+    <?php
+    
+    require 'path/to/Alertinator.php';
+    
+    function alertFatigue() {
+       throw new AlertinatorCriticalException(
+          'Some people just want to watch the world burn.'
+       );
+    }
+    
+    $config = [
+       'twilio' => [
+          'fromNumber' => '+12345678901',
+          'accountSid' => '[long string]',
+          'authToken' => '[another long string]',
+       ],
+       'checks' => [
+          'alertFatigue' => ['default'],
+       ],
+       'groups' => [
+          'default' => [
+             'james',
+          ],
+       ],
+       'alertees' => [
+          'james' => [
+             'email' => ['james@example.com', Alertinator::NOTICE | Alertinator::WARNING],
+             'sms' => ['1234567890', Alertinator::WARNING],
+             'call' => ['1234567890', Alertinator::CRITICAL],
+          ],
+       ],
+    ];
+    (new Alertinator($config))->call();
 
 ## License
 
