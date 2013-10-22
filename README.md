@@ -85,4 +85,5 @@ Please see [this human-readable summary][tldrlegal] and the [LICENSE] file for
 more information.
 
 [tldrlegal]: http://www.tldrlegal.com/l/LGPL3
+[LICENSE]: LICENSE
 
