@@ -1,5 +1,7 @@
 Simplistic team-based alerting through email, sms and phone calls.
 
+[![Build Status](https://travis-ci.org/iFixit/alertinator.png?branch=master)](https://travis-ci.org/iFixit/alertinator)
+
 # Alertinator
 
 Alertinator makes it easy to notify the appropriate people when something's
