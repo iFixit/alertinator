@@ -1,5 +1,8 @@
 <?php
 
+// Make sure *any* failure is actually reported as a failure.
+error_reporting(E_ALL);
+
 require 'Alertinator.php';
 
 /**
