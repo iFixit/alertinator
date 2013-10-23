@@ -3,9 +3,15 @@
 require 'twilio-php/Services/Twilio.php';
 
 class AlertinatorException extends Exception {}
-class AlertinatorNoticeException extends AlertinatorException {}
-class AlertinatorWarningException extends AlertinatorException {}
-class AlertinatorCriticalException extends AlertinatorException {}
+class AlertinatorNoticeException extends AlertinatorException {
+   const bitmask = Alertinator::NOTICE;
+}
+class AlertinatorWarningException extends AlertinatorException {
+   const bitmask = Alertinator::WARNING;
+}
+class AlertinatorCriticalException extends AlertinatorException {
+   const bitmask = Alertinator::CRITICAL;
+}
 
 class Alertinator {
    const NOTICE = 1;   // 001
@@ -16,6 +22,9 @@ class Alertinator {
    public $checks;
    public $groups;
    public $alertees;
+   public $emailSubject = 'Alert';
+
+   protected $_twilio;
 
    public function __construct($config) {
       $this->twilio = $config['twilio'];
@@ -29,15 +38,15 @@ class Alertinator {
          try {
             call_user_func($check);
          } catch (AlertinatorException $e) {
-            $this->alert($e, $alerteeGroups);
+            $this->alertGroups($e, $alerteeGroups);
          }
       }
    }
 
-   protected function alert($exception, $alerteeGroups) {
+   protected function alertGroups($exception, $alerteeGroups) {
       $alertees = $this->extractAlertees($alerteeGroups);
       foreach ($alertees as $alertee) {
-         // alert
+         $this->alert($exception, $this->alertees[$alertee]);
       }
    }
 
@@ -53,6 +62,87 @@ class Alertinator {
          $alertees = array_merge($alertees, $this->groups[$alerteeGroup]);
       }
       return array_unique($alertees);
+   }
+
+   /**
+    * Alert an alertee.
+    *
+    * :param AlertinatorException $exception: The exception containing
+    *                                         information about the alert.
+    * :param array $alertee: An array describing an alertee in the format
+    *                        of `$this->alertees`.
+    */
+   protected function alert($exception, $alertee) {
+      foreach (array_keys($alertee) as $contactMethod) {
+         list($destination, $alertingLevel) = $alertee[$contactMethod];
+         if ($exception::bitmask & $alertingLevel) {
+            $this->$contactMethod($destination, $exception->getMessage());
+         }
+      }
+   }
+
+   /**
+    * Send an email to `$address` with `$message` as the body.
+    */
+   protected function email($address, $message) {
+      if (!mail($address, $this->emailSubject, $message)) {
+         throw new Exception("Sending email to $address failed.");
+      }
+   }
+
+   /**
+    * Send an SMS of `$message` through Twilio to `$number`.
+    */
+   protected function sms($number, $message) {
+      $number = '+1' . $number;
+      $this->getTwilioSms()->sendMessage(
+       $this->twilio['fromNumber'], $number, $message);
+   }
+
+   /**
+    * Make a phone call through Twilio to `$number`, with text-to-speech of
+    * `$message`.
+    */
+   protected function call($number, $message) {
+      $twiml = new Services_Twilio_Twiml();
+      $twiml->say($message);
+      $messageUrl = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
+
+      $number = '+1' . $number;
+      $this->getTwilioCall()->create(
+       $this->twilio['fromNumber'], $number, $messageUrl);
+   }
+
+   /**
+    * Return an object capable of sending Twilio SMS messages.
+    *
+    * This function exists partly to ease mocking, and partly to abstract away
+    * Twilio's deep object inheritance.
+    */
+   protected function getTwilioSms() {
+      return $this->getTwilio()->account->messages;
+   }
+
+   /**
+    * Return an object capable of making Twilio calls.
+    *
+    * This function exists partly to ease mocking, and partly to abstract away
+    * Twilio's deep object inheritance.
+    */
+   protected function getTwilioCall() {
+      return $this->getTwilio()->account->calls;
+   }
+
+   /**
+    * Return a configured :class:`Services_Twilio` object.
+    */
+   protected function getTwilio() {
+      if (!$this->_twilio) {
+         $this->_twilio = new Services_Twilio(
+            $this->twilio['accountSid'],
+            $this->twilio['authToken']);
+      }
+      return $this->_twilio;
    }
 }
 

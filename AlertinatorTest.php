@@ -3,12 +3,43 @@
 require 'Alertinator.php';
 
 /**
- * This mocker class exists solely to allow us to test protected methods in
- * Alertinator.
+ * This mocker class exists to allow us to test protected and
+ * external-service-using in Alertinator.
  */
 class AlertinatorMocker extends Alertinator {
    public function extractAlertees($alerteeGroups) {
       return parent::extractAlertees($alerteeGroups);
+   }
+
+   public function alert($exception, $alertee) {
+      return parent::alert($exception, $alertee);
+   }
+
+   public function email($address, $message) {
+      echo "Sending message $message to $address via email.\n";
+   }
+
+   public function getTwilioSms() {
+      return new TwilioMocker();
+   }
+
+   public function getTwilioCall() {
+      return new TwilioMocker();
+   }
+}
+
+/**
+ * While normally I'd use `stdClass` to fake an object inline, you can't add
+ * methods into stdClass on the fly.  You can add an anonymous function, but
+ * can't call it like a method, and I'm not going to alter the source to make
+ * the tests slightly better.
+ */
+class TwilioMocker {
+   public function sendMessage($fromNumber, $toNumber, $message) {
+      echo "Sending message $message to $toNumber via sms.\n";
+   }
+   public function create($fromNumber, $toNumber, $messageUrl) {
+      echo "Sending message from $messageUrl to $toNumber via call.\n";
    }
 }
 
@@ -24,6 +55,7 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
          ]
       );
    }
+
    public function test_extractAlertees() {
       // The simplest possible case.
       $this->assertEquals(
@@ -74,6 +106,66 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
          ['foo', 'bar', 'baz'],
          $this->alertinator->extractAlertees(['one'])
       );
+   }
+
+   public function test_alert() {
+      // One level that's exactly right.
+      $alertees = ['email' => ['foo@example.com', Alertinator::WARNING]];
+      $this->expectOutputEquals(
+         "Sending message foobaz to foo@example.com via email.\n",
+         [$this->alertinator, 'alert'],
+         [new AlertinatorWarningException('foobaz'), $alertees]
+      );
+
+      // Non-matching levels.
+      $this->expectOutputEquals(
+         '',
+         [$this->alertinator, 'alert'],
+         [new AlertinatorCriticalException('foobaz'), $alertees]
+      );
+
+      // Multiple levels associated with an alerting method.
+      $alertees = ['email' => [
+         'foo@example.com', Alertinator::WARNING | Alertinator::CRITICAL
+      ]];
+      $this->expectOutputEquals(
+         "Sending message foobaz to foo@example.com via email.\n",
+         [$this->alertinator, 'alert'],
+         [new AlertinatorWarningException('foobaz'), $alertees]
+      );
+
+      // Multiple methods.
+      $alertees = [
+         'email' => ['foo@example.com', Alertinator::WARNING],
+         'sms' => ['1234567890', Alertinator::WARNING],
+         'call' => ['1234567890', Alertinator::WARNING],
+      ];
+      // Because Twilio doesn't allow you to just send along a message
+      // directly, you have to create a url that returns the message.
+      $twiml = new Services_Twilio_Twiml();
+      $twiml->say('foobaz');
+      $url = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
+
+      $this->expectOutputEquals(
+         "Sending message foobaz to foo@example.com via email.\n"
+         . "Sending message foobaz to +11234567890 via sms.\n"
+         . "Sending message from $url to +11234567890 via call.\n",
+         [$this->alertinator, 'alert'],
+         [new AlertinatorWarningException('foobaz'), $alertees]
+      );
+   }
+
+   /**
+    * Report an error if the output of `$callable` is not `$expected`. This
+    * provides more flexibility over PHPUnit's `expectOutputString()`.
+    */
+   private function expectOutputEquals($expected, $callable, $params=[]) {
+      ob_start();
+      call_user_func_array($callable, $params);
+      $output = ob_get_contents();
+      ob_end_clean();
+
+      $this->assertEquals($expected, $output);
    }
 }
 
