@@ -73,7 +73,7 @@ reasonable subset of features at a fraction of the cost.
           ],
        ],
     ];
-    (new Alertinator($config))->call();
+    (new Alertinator($config))->check();
 
 ## License
 
