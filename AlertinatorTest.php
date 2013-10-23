@@ -112,6 +112,8 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
    }
 
    public function test_alert() {
+      $this->alertinator->twilio['fromNumber'] = '1234567890';
+
       // One level that's exactly right.
       $alertees = ['email' => ['foo@example.com', Alertinator::WARNING]];
       $this->expectOutputEquals(
