@@ -17,6 +17,7 @@ class Alertinator {
    const NOTICE = 1;   // 001
    const WARNING = 2;  // 010
    const CRITICAL = 4; // 100
+   const ALL = 7;      // 111
 
    public $twilio;
    public $checks;

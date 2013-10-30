@@ -16,13 +16,13 @@ Alertinator API Docs
 
 .. php:class:: Alertinator
 
-      Alertinator blah blah blah.
-
    .. php:const:: Alertinator:: NOTICE = 1;
 
    .. php:const:: Alertinator:: WARNING = 2;
 
    .. php:const:: Alertinator:: CRITICAL = 4;
+
+   .. php:const:: Alertinator:: ALL = 7;
 
    .. php:attr:: $twilio
 
