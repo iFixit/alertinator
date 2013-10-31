@@ -61,9 +61,9 @@ class Alertinator {
 
    /**
     * :param iterable $alerteeGroups: An iterable of strings corresponding to
-    *                                 group names in `$this->groups`.
+    *                                 group names in ``$this->groups``.
     * :returns: An iterable of strings corresponding to alertee names in
-    *           `$this->alertees`.
+    *           ``$this->alertees``.
     */
    protected function extractAlertees($alerteeGroups) {
       $alertees = [];
@@ -79,7 +79,7 @@ class Alertinator {
     * :param AlertinatorException $exception: The exception containing
     *                                         information about the alert.
     * :param array $alertee: An array describing an alertee in the format
-    *                        of `$this->alertees`.
+    *                        of ``$this->alertees``.
     */
    protected function alert($exception, $alertee) {
       foreach (array_keys($alertee) as $contactMethod) {
@@ -91,7 +91,7 @@ class Alertinator {
    }
 
    /**
-    * Send an email to `$address` with `$message` as the body.
+    * Send an email to ``$address`` with ``$message`` as the body.
     */
    protected function email($address, $message) {
       if (!mail($address, $this->emailSubject, $message)) {
@@ -100,7 +100,7 @@ class Alertinator {
    }
 
    /**
-    * Send an SMS of `$message` through Twilio to `$number`.
+    * Send an SMS of ``$message`` through Twilio to ``$number``.
     */
    protected function sms($number, $message) {
       $number = '+1' . $number;
@@ -109,8 +109,8 @@ class Alertinator {
    }
 
    /**
-    * Make a phone call through Twilio to `$number`, with text-to-speech of
-    * `$message`.
+    * Make a phone call through Twilio to ``$number``, with text-to-speech of
+    * ``$message``.
     */
    protected function call($number, $message) {
       $twiml = new Services_Twilio_Twiml();

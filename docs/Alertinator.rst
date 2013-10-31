@@ -52,9 +52,9 @@ Alertinator API Docs
    .. php:method:: Alertinator::extractAlertees()
 
       :param iterable $alerteeGroups: An iterable of strings corresponding to
-                                      group names in `$this->groups`.
+                                      group names in ``$this->groups``.
       :returns: An iterable of strings corresponding to alertee names in
-                `$this->alertees`.
+                ``$this->alertees``.
 
    .. php:method:: Alertinator::alert()
 
@@ -63,20 +63,20 @@ Alertinator API Docs
       :param AlertinatorException $exception: The exception containing
                                               information about the alert.
       :param array $alertee: An array describing an alertee in the format
-                             of `$this->alertees`.
+                             of ``$this->alertees``.
 
    .. php:method:: Alertinator::email()
 
-      Send an email to `$address` with `$message` as the body.
+      Send an email to ``$address`` with ``$message`` as the body.
 
    .. php:method:: Alertinator::sms()
 
-      Send an SMS of `$message` through Twilio to `$number`.
+      Send an SMS of ``$message`` through Twilio to ``$number``.
 
    .. php:method:: Alertinator::call()
 
-      Make a phone call through Twilio to `$number`, with text-to-speech of
-      `$message`.
+      Make a phone call through Twilio to ``$number``, with text-to-speech of
+      ``$message``.
 
    .. php:method:: Alertinator::getTwilioSms()
 
