@@ -2,6 +2,14 @@
 
 require 'twilio-php/Services/Twilio.php';
 
+/**
+ * The base exception class Alertinator uses.
+ *
+ * Derived exceptions are used to trigger an alert.  The only requirement is
+ * that they must have a class constant ``bitmask``, which will be ORed
+ * together with each alertee's notify levels to determine whether a particular
+ * alerting method will be used.
+ */
 class AlertinatorException extends Exception {}
 class AlertinatorNoticeException extends AlertinatorException {
    const bitmask = Alertinator::NOTICE;

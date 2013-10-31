@@ -2,6 +2,13 @@ Alertinator API Docs
 ====================
 .. php:class:: AlertinatorException
 
+      The base exception class Alertinator uses.
+
+      Derived exceptions are used to trigger an alert.  The only requirement is
+      that they must have a class constant ``bitmask``, which will be ORed
+      together with each alertee's notify levels to determine whether a particular
+      alerting method will be used.
+
 .. php:class:: AlertinatorNoticeException
 
    .. php:const:: AlertinatorNoticeException:: bitmask = Alertinator::NOTICE;
