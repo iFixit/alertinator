@@ -1,12 +1,42 @@
-.. Alertinator documentation master file, created by
-   sphinx-quickstart on Wed Oct 23 15:32:51 2013.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Alertinator
+===========
 
-Welcome to Alertinator's documentation!
-=======================================
+Alertinator provides simplistic team-based alerting through email, sms and
+phone calls. ::
 
-Contents:
+    <?php
+    
+    require 'path/to/Alertinator.php';
+    
+    function alertFatigue() {
+       throw new AlertinatorCriticalException(
+          'Some people just want to watch the world burn.'
+       );
+    }
+    
+    $config = [
+       'twilio' => [
+          'fromNumber' => '+12345678901',
+          'accountSid' => '[long string]',
+          'authToken' => '[another long string]',
+       ],
+       'checks' => [
+          'alertFatigue' => ['default'],
+       ],
+       'groups' => [
+          'default' => [
+             'you',
+          ],
+       ],
+       'alertees' => [
+          'you' => [
+             'email' => ['you@example.com', Alertinator::NOTICE | Alertinator::WARNING],
+             'sms' => ['1234567890', Alertinator::WARNING],
+             'call' => ['1234567890', Alertinator::CRITICAL],
+          ],
+       ],
+    ];
+    (new Alertinator($config))->check();
 
 .. toctree::
    :maxdepth: 3
