@@ -43,6 +43,7 @@ phone calls. ::
 
    user_guide
    Alertinator
+   contributor_guide
 
 Indices and tables
 ==================
