@@ -153,7 +153,7 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
 
       $this->expectOutputEquals(
          "Sending message foobaz to foo@example.com via email.\n"
-         . "Sending message foobaz to +11234567890 via sms.\n"
+         . "Sending message foobaz to 1234567890 via sms.\n"
          . "Sending message from $url to +11234567890 via call.\n",
          [$this->alertinator, 'alert'],
          [new AlertinatorWarningException('foobaz'), $alertees]
