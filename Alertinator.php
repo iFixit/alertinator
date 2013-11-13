@@ -103,7 +103,9 @@ class Alertinator {
     * Send an SMS of ``$message`` through Twilio to ``$number``.
     */
    protected function sms($number, $message) {
-      $number = '+1' . $number;
+      // For reasons unknown, SMS doesn't seem to need the '+1' prepended like
+      // phone calls do.  I probably just don't understand telephones.
+      //$number = '+1' . $number;
       $this->getTwilioSms()->sendMessage(
        $this->twilio['fromNumber'], $number, $message);
    }
