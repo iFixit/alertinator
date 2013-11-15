@@ -42,6 +42,13 @@ object::
        sleep(10);
     }
 
+We want to provide an alerting system that is both cheap and easy to use - it
+should be useful with very little work on your part, but easy to customize for
+your specific needs without needing to modify Alertinator itself.  In
+particular, this philosophy extends to the only part of Alertinator that costs
+money (the Twilio integration) - it's easy to swap it out for an alternative,
+or even ignore it altogether.
+
 An :class:`Alertinator` is constructed with one argument, a nested associative
 array containing all the information about your alerting system.  Due to PHP's
 lack of support for `splatting`_ parameters, the single-array method was chosen
