@@ -10,7 +10,14 @@ a submodule::
     [$]> git submodule add https://github.com/iFixit/alertinator.git
     [$]> git submodule update --init --recursive
 
-A fallback approach is to copy the directory in directly::
+It's still recommended to use git to download the project, even if you're not
+using it for your overlying project::
+
+    [$]> git clone --recursive https://github.com/iFixit/alertinator.git
+    [$]> find alertinator -name '.git' -exec rm -rf {} \;
+
+If you don't have git installed on your system, a fallback approach is to copy
+the directory in directly::
 
     [$]> wget 'https://github.com/iFixit/alertinator/archive/master.tar.gz' -O alertinator.tar.gz
     [$]> tar xf alertinator.tar.gz
