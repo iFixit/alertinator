@@ -152,8 +152,10 @@ are of sufficient severity).  You'll notice that we can just leave out any
 definitions for contact methods Bob doesn't want without causing an error in
 Alertinator.
 
-Under the hood, these alert methods are directly mapped to method calls on the
-:class:`Alertinator` object.  This allows easy extension for additional contact
+Each key in these arrays should be the name of a method in the
+:class:`Alertinator` object.  Under the hood, we loop through the keys and call
+the same-named method, passing the first tuple element and the alert-generated
+message as parameters.  This allows easy extension for additional contact
 methods.  For instance, at iFixit we have a contact that looks something like
 this::
 
