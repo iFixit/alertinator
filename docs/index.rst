@@ -41,7 +41,9 @@ phone calls. ::
 .. toctree::
    :maxdepth: 3
 
+   user_guide
    Alertinator
+   contributor_guide
 
 Indices and tables
 ==================
