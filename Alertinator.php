@@ -48,6 +48,14 @@ class Alertinator {
             call_user_func($check);
          } catch (AlertinatorException $e) {
             $this->alertGroups($e, $alerteeGroups);
+         } catch (Exception $e) {
+            // If there's an error in your check functions, you damn better
+            // know about it.
+            $message = "Internal failure in check:\n" . $e->getMessage();
+            $this->alertGroups(
+               new AlertinatorCriticalException($message),
+               $alerteeGroups
+            );
          }
       }
    }

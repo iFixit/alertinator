@@ -160,6 +160,31 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
       );
    }
 
+   public function test_check_errors() {
+      $alertinator = new AlertinatorMocker([
+         'twilio' => ['fromNumber' => '1234567890'],
+         'checks' => ['AlertinatorTest::buggyCheck' => ['default']],
+         'groups' => ['default' => ['alice']],
+         'alertees' => [
+            'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
+         ],
+      ]);
+
+      $message = "Internal failure in check:\n" .
+                 "Use of undefined constant sdf - assumed 'sdf'";
+      $this->expectOutputEquals(
+         "Sending message $message to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+   }
+
+   /**
+    * This is an example of an alert-checking function with an error in it.
+    */
+   public static function buggyCheck() {
+      sdf;
+   }
+
    /**
     * Report an error if the output of `$callable` is not `$expected`. This
     * provides more flexibility over PHPUnit's `expectOutputString()`.
