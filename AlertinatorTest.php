@@ -160,6 +160,10 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
       );
    }
 
+   /**
+    * @expectedException         PHPUnit_Framework_Error_Notice
+    * @expectedExceptionMessage  Use of undefined constant sdf - assumed 'sdf'
+    */
    public function test_check_errors() {
       $alertinator = new AlertinatorMocker([
          'twilio' => ['fromNumber' => '1234567890'],

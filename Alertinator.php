@@ -42,6 +42,13 @@ class Alertinator {
       $this->alertees = $config['alertees'];
    }
 
+   /**
+    * Run through every check, alerting the appropriate alertees on check
+    * failure.
+    *
+    * :raises Exception: Rethrows any non-expected Exceptions thrown in the
+    *                    checks.
+    */
    public function check() {
       foreach ($this->checks as $check => $alerteeGroups) {
          try {
@@ -56,6 +63,8 @@ class Alertinator {
                new AlertinatorCriticalException($message),
                $alerteeGroups
             );
+            // Rethrow so your standard exception handler also gets it.
+            throw $e;
          }
       }
    }
