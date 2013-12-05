@@ -47,6 +47,12 @@ Alertinator API Docs
 
    .. php:method:: Alertinator::check()
 
+      Run through every check, alerting the appropriate alertees on check
+      failure.
+
+      :raises Exception: Rethrows any non-expected Exceptions thrown in the
+                         checks.
+
    .. php:method:: Alertinator::alertGroups()
 
    .. php:method:: Alertinator::extractAlertees()
