@@ -60,7 +60,7 @@ class Alertinator {
             // know about it.
             $message = "Internal failure in check:\n" . $e->getMessage();
             $this->alertGroups(
-               new AlertinatorCriticalException($message),
+               new AlertinatorWarningException($message),
                $alerteeGroups
             );
             // Rethrow so your standard exception handler also gets it.
