@@ -159,6 +159,59 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
          [new AlertinatorWarningException('foobaz'), $alertees]
       );
    }
+   
+   public function test_error_thresholds() {
+      $alertinator = new AlertinatorMocker([
+         'twilio' => ['fromNumber' => '1234567890'],
+         'checks' => [
+            'AlertinatorTest::thresholdChecker' => [
+               'groups' => ['default'],
+               'alertAfter' => 5,
+               'clearAfter' => 2,
+               ],
+            ],
+         'groups' => ['default' => ['alice']],
+         'alertees' => [
+            'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
+         ],
+      ]);
+      $this->expectOutputString('');
+      $alertinator->check();
+      
+      //$this->expectOutputString('POOP');
+      //$alertinator->check();
+      
+      
+      //$this->expectOutputEquals(
+      //   "",
+      //   [new AlertinatorWarningException('foobaz')]
+      //);
+      
+      //$this->expectOutputEquals(
+      //   "",
+      //   [$alertinator, 'check']
+      //);
+      //
+      //$this->expectOutputEquals(
+      //   "",
+      //   [$alertinator, 'check']
+      //);
+      //
+      //$this->expectOutputEquals(
+      //   "",
+      //   [$alertinator, 'check']
+      //);
+      //
+      //$this->expectOutputEquals(
+      //   "Sending message to alice@example.com via email.\n",
+      //   [$alertinator, 'check']
+      //);
+      //
+      //$this->expectOutputEquals(
+      //   "Sending message to alice@example.com via email.\n",
+      //   [$alertinator, 'check']
+      //);
+   }
 
    /**
     * @expectedException         PHPUnit_Framework_Error_Notice
@@ -180,6 +233,12 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
          "Sending message $message to alice@example.com via email.\n",
          [$alertinator, 'check']
       );
+   }
+   
+   public static function thresholdChecker() {
+      //static $i = 1;
+      throw new AlertinatorCriticalException('foobaz');
+      
    }
 
    /**
