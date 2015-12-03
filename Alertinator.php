@@ -104,14 +104,15 @@ class Alertinator {
       if (count($log) >= $clearAfter) {
          $clears = 0;
          // Only notify a clear if the check passes > $clearAfter in a row.
-         foreach($log as $ts => $alert) {
+         foreach($log as $alert) {
             if (!$alert['status']) {
                break;
             }
             $clears++;
          }
          if ($clears >= $clearAfter) {
-            $message = "The alert '$check' was cleared at " . date(DATE_RFC2822, key(reset($log))) . ".";
+            $last = end($log);
+            $message = "The alert '$check' was cleared at " . date(DATE_RFC2822, $last['ts']) . ".";
             $this->alertGroups($message, $alerteeGroups);
             $this->resetLog($check);
          }
@@ -120,16 +121,16 @@ class Alertinator {
       
    private function notifyFailure($check, $alertAfter, $alerteeGroups, $e) {
       $log = $this->logger->readAlerts($check);
-      krsort($log);
       $fails = 0;
-      foreach ($log as $ts => $alert) {
+      foreach ($log as $alert) {
          if (!$alert['status']) {
             $fails++;
          }
       }
       if ($fails >= $alertAfter) {
-         $e = "Threshold of $alertAfter reached at " . date(DATE_RFC2822, key(reset($log))) . ": " . $e;
-         $this->alertGroups($e, $alerteeGroups);  
+         $last = end($log);
+         $e = "Threshold of $alertAfter reached at " . date(DATE_RFC2822, $last['ts']) . ": " . $e;
+         $this->alertGroups($e, $alerteeGroups);
       }
    }
    
@@ -251,13 +252,13 @@ class fileLogger implements alertLogger {
       $ts = $ts ? $ts : time();
       $log = $this->readAlerts($name);
       
-      $alert = [$ts => [
-                          'status' => $status,
-                          'check' => $name,
-                          ],
-              ];
+      $alert = [
+                  'ts' => $ts,
+                  'status' => $status,
+                  'check' => $name,
+               ];
       
-      $log += $alert;
+      $log[] = $alert;
       if (!$fp = fopen($this->getLogFileName($name), 'w')) {
          throw new Exception("Could not open log file " . $this->getLogFileName($name) . " for writing.");
       }

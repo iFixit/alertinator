@@ -160,11 +160,53 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
       );
    }
    
+   public function test_file_interface() {
+      $fl = new fileLogger();
+      // Nothing logged, this should be empty:
+      $this->assertEmpty($fl->isInAlert('foofail'));
+      
+      // Write a failure, see if it was written:
+      $fl->writeAlert('foofail', 0);
+      $log = $fl->readAlerts('foofail');
+      $this->assertNotEquals('barfail', $log[0]['check']);
+      $this->assertEquals('foofail', $log[0]['check']);
+      $this->assertEquals(0, $log[0]['status']);
+      
+      // Write a success, see if it was written:
+      $fl->writeAlert('foofail', 1);
+      $log = $fl->readAlerts('foofail');
+      $this->assertNotEquals('barfail', $log[1]['check']);
+      $this->assertEquals('foofail', $log[1]['check']);
+      $this->assertEquals(1, $log[1]['status']);
+      
+      // Reset alerts, confirm that the log is empty:
+      $fl->resetAlerts('foofail');
+      $this->assertEmpty($fl->isInAlert('foofail'));
+      
+      // Since order is important for determining alert clears, see if slamming
+      // the interface breaks things.
+      $test_values = array();
+      for ($i = 0; $i < 100; $i++) {
+         $rand = rand(0, 1);
+         $test_values[] = $rand;
+         $fl->writeAlert('megacount', $rand);
+      }
+      $log = $fl->readAlerts('megacount');
+      $this->assertEquals(100, count($log));
+      foreach ($test_values as $k => $v) {
+         $this->assertEquals($v, $log[$k]['status']);
+      }
+      
+      // Reset alerts, confirm again that the log is empty:
+      $fl->resetAlerts('megacount');
+      $this->assertEmpty($fl->isInAlert('megacount'));
+   }
+   
    public function test_error_thresholds() {
       $alertinator = new AlertinatorMocker([
          'twilio' => ['fromNumber' => '1234567890'],
          'checks' => [
-            'AlertinatorTest::thresholdChecker' => [
+            'AlertinatorTest::alwaysSucceed' => [
                'groups' => ['default'],
                'alertAfter' => 5,
                'clearAfter' => 2,
@@ -235,10 +277,12 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
       );
    }
    
-   public static function thresholdChecker() {
-      //static $i = 1;
+   public static function alwaysFail() {
       throw new AlertinatorCriticalException('foobaz');
-      
+   }
+   
+   public static function alwaysSucceed() {
+      return;
    }
 
    /**
