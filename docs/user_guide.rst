@@ -87,7 +87,7 @@ Checks
 sent. Optionally, you can define an alert threshold (useful for twitchy checks).
 If you define an alert threshold, you should also define an all-clear threshold.
 If you use thresholds, an alert logger will be used for alert persistence. More
-information on the logger interface is in a section below.
+information on the logger interface is in a section below::
 
     // Simple implementation:
     'checks' => [
@@ -97,16 +97,16 @@ information on the logger interface is in a section below.
 In this case, ``checkDB`` is a global function that throws an
 :class:`AlertinatorException` when some alerting threshold is passed.  When
 that happens, the alert will be sent out to members of the ``ops`` and ``devs``
-:ref:`groups`.
+:ref:`groups`::
 
     // Complex implementation, with alert thresholds:
     'checks' => [
-      'checkDB' => [
-         'groups' => ['ops'],
-         'alertAfter' => 5,
-         'clearAfter' => 2,
-         ],
-      ],
+        'checkDB' => [
+            'groups' => ['ops'],
+            'alertAfter' => 5,
+            'clearAfter' => 2,
+        ],
+    ],
 
 In this case, ``checkDB`` is still the check function, and when the alert
 exception is thrown, the alert will be sent to the ``ops`` group after the
@@ -125,7 +125,7 @@ Groups
 ^^^^^^
 
 Groups allow you to alert a number of people together without having to repeat
-their names.
+their names::
 
     'groups' => [
        'ops' => ['alice'],
@@ -193,7 +193,7 @@ Notification thresholds
 ^^^^^^^^
 
 Notification thresholds are definable on a per-check level. As in the example
-above, you define your thresholds like this:
+above, you define your thresholds like this::
 
     // With alert thresholds:
     'checks' => [
@@ -218,6 +218,6 @@ Alert persistence adaptor
 Using alert thresholds requires a persistence layer. Alertinator by default uses
 the filesystem and PHP's tmp directory for this purpose. You can define your own
 interface (for example, if you'd like to use MySQL) by implementing the
-```alertLogger``` interface.
+``alertLogger`` interface.
 
 If you don't use notification thresholds, this section doesn't apply to you.
