@@ -87,6 +87,10 @@ class Alertinator {
       }
    }
    
+   /**
+    * Threshold notification: determine if an all-clear alert should be sent,
+    * and if so, send it and reset the logger.
+   */
    private function notifyClear($check, $alertAfter, $clearAfter, $alerteeGroups) {
       $log = $this->logger->readAlerts($check);
       krsort($log);
@@ -123,7 +127,11 @@ class Alertinator {
          }
       }
    }
-      
+    
+   /**
+    * Threshold notification: determine if a failure alert should be sent, and
+    * if so, send it.
+   */  
    private function notifyFailure($check, $alertAfter, $alerteeGroups, $e) {
       $log = $this->logger->readAlerts($check);
       $fails = 0;
@@ -178,6 +186,9 @@ class Alertinator {
       }
    }
    
+   /**
+    * We sometimes need to modify the Exception's message for threshold alerts.
+   */
    private function prependExceptionMessage($e, $newMessage) {
       $oldMsg = $e->getMessage();
       $newMsg = $newMessage . $oldMsg;
@@ -261,6 +272,13 @@ interface alertLogger {
 
 class fileLogger implements alertLogger {
    
+   /**
+    * Write an alert to the logger.
+    *
+    * @param $name string  The key of the alert. Usually the name of the check fn.
+    * @param $status bool  0 = fail, 1 = success
+    * @param $ts int  Unix Timestamp of the event.
+   */
    public function writeAlert($name, $status, $ts = FALSE) {
       $ts = $ts ? $ts : time();
       $log = $this->readAlerts($name);
@@ -279,6 +297,9 @@ class fileLogger implements alertLogger {
       fclose($fp); 
    }
    
+   /**
+    * Return all alerts for a given key.
+   */
    public function readAlerts($name) {
       $log = array();
       if (file_exists($this->getLogFileName($name))) {
@@ -288,12 +309,18 @@ class fileLogger implements alertLogger {
       return $log;
    }
    
+   /**
+    * Reset all alerts for a given key.
+   */
    public function resetAlerts($name) {
       if(!unlink($this->getLogFileName($name))) {
          throw new Exception("Could not reset log file " . $this->getLogFileName($name) . "!");
       }
    }
    
+   /**
+    * Determine if there's at least one failure recorded.
+   */
    public function isInAlert($name) {
       return count($this->readAlerts($name));
    }
