@@ -113,8 +113,13 @@ class Alertinator {
          if ($clears >= $clearAfter) {
             $last = end($log);
             $message = "The alert '$check' was cleared at " . date(DATE_RFC2822, $last['ts']) . ".";
-            $this->alertGroups($message, $alerteeGroups);
-            $this->resetLog($check);
+            // TODO: It is impossible here to know what exception level should
+            // be sent. In absence of this information we have to just blast it
+            // to everyone. Once https://github.com/iFixit/alertinator/issues/3
+            // is implemented, exception level should be available.
+            $e = new AlertinatorCriticalException($message);
+            $this->alertGroups($e, $alerteeGroups);
+            $this->logger->resetAlerts($check);
          }
       }
    }
@@ -129,7 +134,8 @@ class Alertinator {
       }
       if ($fails >= $alertAfter) {
          $last = end($log);
-         $e = "Threshold of $alertAfter reached at " . date(DATE_RFC2822, $last['ts']) . ": " . $e;
+         $newMsg = "Threshold of $alertAfter reached at " . date(DATE_RFC2822, $last['ts']) . ": ";
+         $e = $this->prependExceptionMessage($e, $newMsg);
          $this->alertGroups($e, $alerteeGroups);
       }
    }
@@ -170,6 +176,13 @@ class Alertinator {
             $this->$contactMethod($destination, $exception->getMessage());
          }
       }
+   }
+   
+   private function prependExceptionMessage($e, $newMessage) {
+      $oldMsg = $e->getMessage();
+      $newMsg = $newMessage . $oldMsg;
+      $eClass = get_class($e);
+      return new $eClass($newMsg);
    }
 
    /**
