@@ -10,7 +10,7 @@ require 'twilio-php/Services/Twilio.php';
  * together with each alertee's notify levels to determine whether a particular
  * alerting method will be used.
  */
-class AlertinatorException extends Exception {}
+abstract class AlertinatorException extends Exception {}
 class AlertinatorNoticeException extends AlertinatorException {
    const bitmask = Alertinator::NOTICE;
 }
