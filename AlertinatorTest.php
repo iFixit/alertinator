@@ -48,6 +48,7 @@ class TwilioMocker {
 
 class AlertinatorTest extends PHPUnit_Framework_TestCase {
    protected function setUp() {
+      date_default_timezone_set("America/Los_Angeles");
       // Create an Alertinator with just enough config to construct.
       $this->alertinator = new AlertinatorMocker(
          [
@@ -159,6 +160,130 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
          [new AlertinatorWarningException('foobaz'), $alertees]
       );
    }
+   
+   /**
+    * Test the default storage interface.
+   */
+   public function test_file_interface() {
+      $fl = new fileLogger();
+      // Nothing logged, this should be empty:
+      $this->assertEmpty($fl->isInAlert('foofail'));
+      
+      // Write a failure, see if it was written:
+      $fl->writeAlert('foofail', 0);
+      $log = $fl->readAlerts('foofail');
+      $this->assertNotEquals('barfail', $log[0]['check']);
+      $this->assertEquals('foofail', $log[0]['check']);
+      $this->assertEquals(0, $log[0]['status']);
+      
+      // Write a success, see if it was written:
+      $fl->writeAlert('foofail', 1);
+      $log = $fl->readAlerts('foofail');
+      $this->assertNotEquals('barfail', $log[1]['check']);
+      $this->assertEquals('foofail', $log[1]['check']);
+      $this->assertEquals(1, $log[1]['status']);
+      
+      // Reset alerts, confirm that the log is empty:
+      $fl->resetAlerts('foofail');
+      $this->assertEmpty($fl->isInAlert('foofail'));
+      
+      // Since order is important for determining alert clears, see if slamming
+      // the interface breaks things.
+      $test_values = array();
+      for ($i = 0; $i < 100; $i++) {
+         $rand = rand(0, 1);
+         $test_values[] = $rand;
+         $fl->writeAlert('megacount', $rand);
+      }
+      $log = $fl->readAlerts('megacount');
+      $this->assertEquals(100, count($log));
+      foreach ($test_values as $k => $v) {
+         $this->assertEquals($v, $log[$k]['status']);
+      }
+      
+      // Reset alerts, confirm again that the log is empty:
+      $fl->resetAlerts('megacount');
+      $this->assertEmpty($fl->isInAlert('megacount'));
+   }
+   
+   /**
+    * Test the threshold functionality.
+   */
+   public function test_error_thresholds() {
+      $alertinator = new AlertinatorMocker([
+         'twilio' => ['fromNumber' => '1234567890'],
+         'checks' => [
+            'AlertinatorTest::failFiveTimes' => [
+               'groups' => ['default'],
+               'alertAfter' => 5,
+               'clearAfter' => 2,
+               ],
+            ],
+         'groups' => ['default' => ['alice']],
+         'alertees' => [
+            'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
+         ],
+      ]);
+      
+      // The first 4 alerts should do nothing...
+      $this->expectOutputString('');
+      $alertinator->check();
+      
+      $this->expectOutputString('');
+      $alertinator->check();
+      
+      $this->expectOutputString('');
+      $alertinator->check();
+      
+      $this->expectOutputString('');
+      $alertinator->check();
+      
+      // The 5th alert should fire an email.
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message Threshold of 5 reached at",
+         ": Fail Five Times Test to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+      
+      // Clear #1...
+      $this->expectOutputString('');
+      $alertinator->check();
+      
+      // The 2nd clear should fire an email.
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message The alert 'AlertinatorTest::failFiveTimes' was cleared at",
+         "to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+      
+      // Make sure everything was deleted.
+      $this->assertEmpty($alertinator->logger->isInAlert('AlertinatorTest::failFiveTimes'));
+      
+      
+      // Now let's simulate a failure state that "bounces" between fail and
+      // success:
+      $alertinator = new AlertinatorMocker([
+         'twilio' => ['fromNumber' => '1234567890'],
+         'checks' => [
+            'AlertinatorTest::failBouncer' => [
+               'groups' => ['default'],
+               'alertAfter' => 10,
+               'clearAfter' => 5,
+               ],
+            ],
+         'groups' => ['default' => ['alice']],
+         'alertees' => [
+            'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
+         ],
+      ]);
+      
+      // TODO: As you can see, this state is (maybe?) not handled well.
+      // @see Alertinator::notifyClear()
+      for ($i = 0; $i < 19; $i++) {
+         $this->expectOutputString('');
+         $alertinator->check();   
+      }
+   }
 
    /**
     * @expectedException         PHPUnit_Framework_Error_Notice
@@ -181,6 +306,30 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
          [$alertinator, 'check']
       );
    }
+   
+   /**
+    * Fail 5 times, then pass indefinitely.
+   */
+   public static function failFiveTimes() {
+      static $count = 0;
+      $count++;
+      if ($count <= 5) {
+         throw new AlertinatorCriticalException('Fail Five Times Test');
+      }
+      return;
+   }
+   
+   /**
+    * Alternates between fail/pass 25 times, then passes indefinitely.
+   */
+   public static function failBouncer() {
+      static $count = -1; // Needs to start at 0
+      $count++;
+      if (!($count % 2) && $count < 25) {
+         throw new AlertinatorCriticalException('Fail Bouncer');
+      }
+      return;
+   }
 
    /**
     * This is an example of an alert-checking function with an error in it.
@@ -200,6 +349,23 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
       ob_end_clean();
 
       $this->assertEquals($expected, $output);
+   }
+   
+   /**
+    * Seems silly, but failure and reset messages have timestamps in the middle
+    * of them which would be cumbersome to persist. Instead, we can check the
+    * start and end of the message (effectively bypassing the timestamp).
+    * Stop right there, you're thinking "why not a regex?"
+    * This is why: http://regex.info/blog/2006-09-15/247
+   */
+   private function expectOutputStartsAndEndsWith($expectedStart, $expectedEnd, $callable, $params=[]) {
+      ob_start();
+      call_user_func_array($callable, $params);
+      $output = ob_get_contents();
+      ob_end_clean();
+
+      $this->assertStringStartsWith($expectedStart, $output);
+      $this->assertStringEndsWith($expectedEnd, $output);
    }
 }
 

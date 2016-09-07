@@ -35,11 +35,13 @@ class Alertinator {
 
    protected $_twilio;
 
-   public function __construct($config) {
+   public function __construct($config, alertLogger $logger = NULL) {
       $this->twilio = $config['twilio'];
       $this->checks = $config['checks'];
       $this->groups = $config['groups'];
       $this->alertees = $config['alertees'];
+      $this->logger = $logger ? $logger : new fileLogger();
+      
    }
 
    /**
@@ -50,11 +52,27 @@ class Alertinator {
     *                    checks.
     */
    public function check() {
-      foreach ($this->checks as $check => $alerteeGroups) {
+      foreach ($this->checks as $check => $properties) {
+         // For compatibility with old-style (short style?) check declaration,
+         // determine if *After properties were defined.
+         $alertAfter = !empty($properties['alertAfter']) ? $properties['alertAfter'] : 0;
+         $clearAfter = !empty($properties['clearAfter']) ? $properties['clearAfter'] : 0;
+         $alerteeGroups = !empty($properties['groups']) ? $properties['groups'] : $properties;
+         
          try {
             call_user_func($check);
+            if ($clearAfter && $this->logger->isInAlert($check)) {
+               $this->logger->writeAlert($check, 1, time());
+               $this->notifyClear($check, $alertAfter, $clearAfter, $alerteeGroups);
+            }
          } catch (AlertinatorException $e) {
-            $this->alertGroups($e, $alerteeGroups);
+            if ($alertAfter) {
+               $this->logger->writeAlert($check, 0, time());
+               $this->notifyFailure($check, $alertAfter, $alerteeGroups, $e);
+            }
+            else {
+               $this->alertGroups($e, $alerteeGroups);
+            }
          } catch (Exception $e) {
             // If there's an error in your check functions, you damn better
             // know about it.
@@ -68,7 +86,68 @@ class Alertinator {
          }
       }
    }
-
+   
+   /**
+    * Threshold notification: determine if an all-clear alert should be sent,
+    * and if so, send it and reset the logger.
+   */
+   private function notifyClear($check, $alertAfter, $clearAfter, $alerteeGroups) {
+      $log = $this->logger->readAlerts($check);
+      krsort($log);
+      
+      // We only get here if there was at least 1 failure, but 1 failure may not
+      // exceed the alertAfter threshold. If the check succeeds without
+      // reaching the alert threshold, reset the log silently.
+      // TODO: this will break terribly for bouncing errors, e.g. pass-> fail->
+      //       pass-> fail-> pass-> fail. Account for this.
+      if (count($log) < $alertAfter) {
+         $this->logger->resetAlerts($check);
+         return;
+      }
+      
+      if (count($log) >= $clearAfter) {
+         $clears = 0;
+         // Only notify a clear if the check passes > $clearAfter in a row.
+         foreach($log as $alert) {
+            if (!$alert['status']) {
+               break;
+            }
+            $clears++;
+         }
+         if ($clears >= $clearAfter) {
+            $last = end($log);
+            $message = "The alert '$check' was cleared at " . date(DATE_RFC2822, $last['ts']) . ".";
+            // TODO: It is impossible here to know what exception level should
+            // be sent. In absence of this information we have to just blast it
+            // to everyone. Once https://github.com/iFixit/alertinator/issues/3
+            // is implemented, exception level should be available.
+            $e = new AlertinatorCriticalException($message);
+            $this->alertGroups($e, $alerteeGroups);
+            $this->logger->resetAlerts($check);
+         }
+      }
+   }
+    
+   /**
+    * Threshold notification: determine if a failure alert should be sent, and
+    * if so, send it.
+   */  
+   private function notifyFailure($check, $alertAfter, $alerteeGroups, $e) {
+      $log = $this->logger->readAlerts($check);
+      $fails = 0;
+      foreach ($log as $alert) {
+         if (!$alert['status']) {
+            $fails++;
+         }
+      }
+      if ($fails >= $alertAfter) {
+         $last = end($log);
+         $newMsg = "Threshold of $alertAfter reached at " . date(DATE_RFC2822, $last['ts']) . ": ";
+         $e = $this->prependExceptionMessage($e, $newMsg);
+         $this->alertGroups($e, $alerteeGroups);
+      }
+   }
+   
    protected function alertGroups($exception, $alerteeGroups) {
       $alertees = $this->extractAlertees($alerteeGroups);
       foreach ($alertees as $alertee) {
@@ -105,6 +184,16 @@ class Alertinator {
             $this->$contactMethod($destination, $exception->getMessage());
          }
       }
+   }
+   
+   /**
+    * We sometimes need to modify the Exception's message for threshold alerts.
+   */
+   private function prependExceptionMessage($e, $newMessage) {
+      $oldMsg = $e->getMessage();
+      $newMsg = $newMessage . $oldMsg;
+      $eClass = get_class($e);
+      return new $eClass($newMsg);
    }
 
    /**
@@ -174,3 +263,74 @@ class Alertinator {
    }
 }
 
+interface alertLogger {
+   public function writeAlert($name, $status, $ts);
+   public function readAlerts($name);
+   public function resetAlerts($name);
+   public function isInAlert($name);
+}
+
+class fileLogger implements alertLogger {
+   
+   /**
+    * Write an alert to the logger.
+    *
+    * @param $name string  The key of the alert. Usually the name of the check fn.
+    * @param $status bool  0 = fail, 1 = success
+    * @param $ts int  Unix Timestamp of the event.
+   */
+   public function writeAlert($name, $status, $ts = FALSE) {
+      $ts = $ts ? $ts : time();
+      $log = $this->readAlerts($name);
+      
+      $alert = [
+                  'ts' => $ts,
+                  'status' => $status,
+                  'check' => $name,
+               ];
+      
+      $log[] = $alert;
+      if (!$fp = fopen($this->getLogFileName($name), 'w')) {
+         throw new Exception("Could not open log file " . $this->getLogFileName($name) . " for writing.");
+      }
+      fwrite($fp, json_encode($log));
+      fclose($fp); 
+   }
+   
+   /**
+    * Return all alerts for a given key.
+   */
+   public function readAlerts($name) {
+      $log = array();
+      if (file_exists($this->getLogFileName($name))) {
+         $prevLog = file_get_contents($this->getLogFileName($name));
+         $log = json_decode($prevLog, true);  
+      }
+      return $log;
+   }
+   
+   /**
+    * Reset all alerts for a given key.
+   */
+   public function resetAlerts($name) {
+      if(!unlink($this->getLogFileName($name))) {
+         throw new Exception("Could not reset log file " . $this->getLogFileName($name) . "!");
+      }
+   }
+   
+   /**
+    * Determine if there's at least one failure recorded.
+   */
+   public function isInAlert($name) {
+      return count($this->readAlerts($name));
+   }
+   
+   private function getLogFileName($name) {
+      $file = strtolower(mb_ereg_replace("([^\w\s\d\-_~,;:\[\]\(\).])", '', $name));
+      return $this->getTmpDir() . '/' . $file . '.log';
+   }
+   
+   private function getTmpDir() {
+      return ini_get('upload_tmp_dir') ? ini_get('upload_tmp_dir') : sys_get_temp_dir();
+   }
+}

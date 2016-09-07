@@ -75,6 +75,8 @@ reasonable subset of features at a fraction of the cost.
     ];
     (new Alertinator($config))->check();
 
+For more advanced usage, including using alert thresholds, see the [user guide](https://github.com/ifixit/alertinator/blob/master/docs/user_guide.rst).
+
 ## License
 
 Alertinator is available under the LGPL 3.0, which means that while any code
