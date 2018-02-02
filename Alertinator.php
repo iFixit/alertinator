@@ -40,7 +40,7 @@ class Alertinator {
       $this->checks = $config['checks'];
       $this->groups = $config['groups'];
       $this->alertees = $config['alertees'];
-      $this->logger = $logger ? $logger : new fileLogger();
+      $this->logger = $logger ?? new fileLogger();
       
    }
 
@@ -55,9 +55,9 @@ class Alertinator {
       foreach ($this->checks as $check => $properties) {
          // For compatibility with old-style (short style?) check declaration,
          // determine if *After properties were defined.
-         $alertAfter = !empty($properties['alertAfter']) ? $properties['alertAfter'] : 0;
-         $clearAfter = !empty($properties['clearAfter']) ? $properties['clearAfter'] : 0;
-         $alerteeGroups = !empty($properties['groups']) ? $properties['groups'] : $properties;
+         $alertAfter = $properties['alertAfter'] ?? 0;
+         $clearAfter = $properties['clearAfter'] ?? 0;
+         $alerteeGroups = $properties['groups'] ?? $properties;
          
          try {
             call_user_func($check);
@@ -280,7 +280,7 @@ class fileLogger implements alertLogger {
     * @param $ts int  Unix Timestamp of the event.
    */
    public function writeAlert($name, $status, $ts = FALSE) {
-      $ts = $ts ? $ts : time();
+      $ts = $ts ?: time();
       $log = $this->readAlerts($name);
       
       $alert = [
@@ -331,6 +331,6 @@ class fileLogger implements alertLogger {
    }
    
    private function getTmpDir() {
-      return ini_get('upload_tmp_dir') ? ini_get('upload_tmp_dir') : sys_get_temp_dir();
+      return ini_get('upload_tmp_dir') ?? sys_get_temp_dir();
    }
 }
