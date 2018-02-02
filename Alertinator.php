@@ -331,6 +331,6 @@ class fileLogger implements alertLogger {
    }
    
    private function getTmpDir() {
-      return ini_get('upload_tmp_dir') ?? sys_get_temp_dir();
+      return ini_get('upload_tmp_dir') ?: sys_get_temp_dir();
    }
 }

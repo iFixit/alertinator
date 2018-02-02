@@ -46,7 +46,7 @@ class TwilioMocker {
    }
 }
 
-class AlertinatorTest extends PHPUnit_Framework_TestCase {
+class AlertinatorTest extends PHPUnit\Framework\TestCase {
    protected function setUp() {
       date_default_timezone_set("America/Los_Angeles");
       // Create an Alertinator with just enough config to construct.
@@ -286,7 +286,7 @@ class AlertinatorTest extends PHPUnit_Framework_TestCase {
    }
 
    /**
-    * @expectedException         PHPUnit_Framework_Error_Notice
+    * @expectedException         PHPUnit\Framework\Error\Notice
     * @expectedExceptionMessage  Use of undefined constant sdf - assumed 'sdf'
     */
    public function test_check_errors() {
