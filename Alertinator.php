@@ -57,7 +57,8 @@ class Alertinator {
          // determine if *After properties were defined.
          $alertAfter    = $properties['alertAfter'] ?? 0;
          $clearAfter    = $properties['clearAfter'] ?? 0;
-         $remindEvery   = $properties['remindEvery'] ?: $alertAfter ?: 1;
+         $remindEvery   = $properties['remindEvery'] ?? $alertAfter;
+         $remindEvery   = $remindEvery ?: 1;
          $alerteeGroups = $properties['groups'] ?? $properties;
          
          try {
