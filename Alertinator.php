@@ -139,7 +139,8 @@ class Alertinator {
          }
       }
 
-      $reminderTriggered = $fails % ($remindEvery + $alertAfter) == 0;
+      $reminderTriggered = $fails > $alertAfter
+       && ($fails - $alertAfter) % $remindEvery == 0;
 
       if ($fails && $fails >= $alertAfter && ($fails === $alertAfter || $reminderTriggered)) {
          $last = end($log);
