@@ -204,6 +204,7 @@ above, you define your thresholds like this::
          'groups' => ['ops'],
          'alertAfter' => 5,
          'clearAfter' => 2,
+         'remindEvery' => 1,
          ],
       ],
       
@@ -214,6 +215,9 @@ reset the alert counter silently.
 ``clearAfter``: send an all-clear message after this many sequential successes.
 Note: the all-clear message will send at the ``AlertinatorCriticalException``
 level, no matter what level the initial exception was.
+
+``remindEvery``: this threshold limits reminders to only every X errors after
+the first alert is sent.
 
 Alert persistence adaptor
 ^^^^^^^^
