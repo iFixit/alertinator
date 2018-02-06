@@ -111,10 +111,9 @@ that happens, the alert will be sent out to members of the ``ops`` and ``devs``
 
 In this case, ``checkDB`` is still the check function, and when the alert
 exception is thrown, the alert will be sent to the ``ops`` group after the
-``afterAlert`` threshold is met. Also, once the check passes ``clearAfter``
-times in a row, an all-clear alert will be sent. Finally, the ``remindEvery``
-threshold limits reminders to only every X errors after the first alert is
-sent.
+``alertAfter`` threshold is met. Also, once the check passes ``clearAfter``
+times in a row, an all-clear alert will be sent. Finally, reminder alerts are
+limited to only every ``remindEvery`` errors after the first alert is sent.
 
 It's not necessarily a good idea to use global functions for your alerts.
 Correspondingly, alert names can be any PHP `callable`_, e.g.
