@@ -55,8 +55,9 @@ class Alertinator {
       foreach ($this->checks as $check => $properties) {
          // For compatibility with old-style (short style?) check declaration,
          // determine if *After properties were defined.
-         $alertAfter = $properties['alertAfter'] ?? 0;
-         $clearAfter = $properties['clearAfter'] ?? 0;
+         $alertAfter    = $properties['alertAfter'] ?? 0;
+         $clearAfter    = $properties['clearAfter'] ?? 0;
+         $remindEvery   = $properties['remindEvery'] ?: $alertAfter ?: 1;
          $alerteeGroups = $properties['groups'] ?? $properties;
          
          try {
@@ -66,13 +67,8 @@ class Alertinator {
                $this->notifyClear($check, $alertAfter, $clearAfter, $alerteeGroups);
             }
          } catch (AlertinatorException $e) {
-            if ($alertAfter) {
-               $this->logger->writeAlert($check, 0, time());
-               $this->notifyFailure($check, $alertAfter, $alerteeGroups, $e);
-            }
-            else {
-               $this->alertGroups($e, $alerteeGroups);
-            }
+            $this->logger->writeAlert($check, 0, time());
+            $this->notifyFailure($check, $alertAfter, $alerteeGroups, $e, $remindEvery);
          } catch (Exception $e) {
             // If there's an error in your check functions, you damn better
             // know about it.
@@ -132,17 +128,24 @@ class Alertinator {
     * Threshold notification: determine if a failure alert should be sent, and
     * if so, send it.
    */  
-   private function notifyFailure($check, $alertAfter, $alerteeGroups, $e) {
+   private function notifyFailure($check, $alertAfter, $alerteeGroups, $e, $remindEvery) {
       $log = $this->logger->readAlerts($check);
       $fails = 0;
+
       foreach ($log as $alert) {
          if (!$alert['status']) {
             $fails++;
          }
       }
-      if ($fails >= $alertAfter) {
+
+      $reminderTriggered = $fails % ($remindEvery + $alertAfter) == 0;
+
+      if ($fails && $fails >= $alertAfter && ($fails === $alertAfter || $reminderTriggered)) {
          $last = end($log);
-         $newMsg = "Threshold of $alertAfter reached at " . date(DATE_RFC2822, $last['ts']) . ": ";
+         $newMsg = "Threshold of $alertAfter reached at "
+          . date(DATE_RFC2822, $last['ts'])
+          . ($reminderTriggered ? " (reminding every {$remindEvery} fails)" : '')
+          . ": ";
          $e = $this->prependExceptionMessage($e, $newMsg);
          $this->alertGroups($e, $alerteeGroups);
       }
