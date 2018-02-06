@@ -62,7 +62,7 @@ piece or all in one go.
 Twilio
 ^^^^^^
 
-The ``twilio`` key should refer to an associate array with three entries::
+The ``twilio`` key should refer to an associative array with three entries::
 
     'twilio' => [
        'fromNumber' => '+12345678901',
