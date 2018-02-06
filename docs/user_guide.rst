@@ -57,7 +57,7 @@ array containing all the information about your alerting system:
 Twilio
 ^^^^^^
 
-The ``twilio`` key should refer to an associate array with three entries::
+The ``twilio`` key should refer to an associative array with three entries::
 
     'twilio' => [
        'fromNumber' => '+12345678901',
@@ -116,7 +116,7 @@ times in a row, an all-clear alert will be sent. Finally, the ``remindEvery``
 threshold limits reminders to only every X errors after the first alert is
 sent.
 
-It's not necessarily a good idea to use global function for your alerts.
+It's not necessarily a good idea to use global functions for your alerts.
 Correspondingly, alert names can be any PHP `callable`_, e.g.
 ``AlertChecker::checkDB``.
 
@@ -148,7 +148,7 @@ If an alert is triggered but no one's around to hear it, your boss will let you
 know the next morning whether the system broke (hint: the answer is always
 yes).
 
-``alertees`` comprise the most complex of the data structures in ``$config``.
+``alertees`` comprises the most complex of the data structures in ``$config``.
 Here's an example with two people::
 
     'alertees' => [
