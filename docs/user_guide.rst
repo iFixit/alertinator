@@ -100,7 +100,7 @@ In this case, ``checkDB`` is a global function that throws an
 that happens, the alert will be sent out to members of the ``ops`` and ``devs``
 :ref:`groups`.
 
-It's not necessarily a good idea to use global function for your alerts.
+It's not necessarily a good idea to use global functions for your alerts.
 Correspondingly, alert names can be any PHP `callable`_, e.g.
 ``AlertChecker::checkDB``.
 
@@ -132,7 +132,7 @@ If an alert is triggered but no one's around to hear it, your boss will let you
 know the next morning whether the system broke (hint: the answer is always
 yes).
 
-``alertees`` comprise the most complex of the data structures in ``$config``.
+``alertees`` comprises the most complex of the data structures in ``$config``.
 Here's an example with two people::
 
     'alertees' => [
