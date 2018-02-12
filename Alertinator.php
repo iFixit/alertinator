@@ -105,7 +105,7 @@ class Alertinator {
       if (count($log) >= $clearAfter) {
          $clears = 0;
          // Only notify a clear if the check passes > $clearAfter in a row.
-         foreach($log as $alert) {
+         foreach ($log as $alert) {
             if (!$alert['status']) {
                break;
             }
@@ -148,7 +148,7 @@ class Alertinator {
           . date(DATE_RFC2822, $last['ts'])
           . ($reminderTriggered ? " (reminding every {$remindEvery} fails)" : '')
           . ": ";
-         $e = $this->prependExceptionMessage($e, $newMsg);
+         $e = $this->prependExceptionMessage($newMsg, $e);
          $this->alertGroups($e, $alerteeGroups);
       }
    }
@@ -194,7 +194,7 @@ class Alertinator {
    /**
     * We sometimes need to modify the Exception's message for threshold alerts.
    */
-   private function prependExceptionMessage($e, $newMessage) {
+   private function prependExceptionMessage($newMessage, $e) {
       $oldMsg = $e->getMessage();
       $newMsg = $newMessage . $oldMsg;
       $eClass = get_class($e);
