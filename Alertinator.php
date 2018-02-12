@@ -142,7 +142,7 @@ class Alertinator {
       $reminderTriggered = $fails > $alertAfter
        && ($fails - $alertAfter) % $remindEvery == 0;
 
-      if ($fails && $fails >= $alertAfter && ($fails === $alertAfter || $reminderTriggered)) {
+      if ($fails === $alertAfter || $reminderTriggered) {
          $last = end($log);
          $newMsg = "Threshold of $alertAfter reached at "
           . date(DATE_RFC2822, $last['ts'])
@@ -314,6 +314,14 @@ class fileLogger implements alertLogger {
       return $log;
    }
    
+   /**
+    * Safely resets all alerts for a given key.
+   */
+   public function safelyResetAlerts($name) {
+      try {!unlink($this->getLogFileName($name)); }
+      catch (Exception $e) { }
+   }
+
    /**
     * Reset all alerts for a given key.
    */

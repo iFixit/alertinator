@@ -224,19 +224,13 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
             'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
          ],
       ]);
+      $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
       
       // The first 4 alerts should do nothing...
-      $this->expectOutputString('');
-      $alertinator->check();
-      
-      $this->expectOutputString('');
-      $alertinator->check();
-      
-      $this->expectOutputString('');
-      $alertinator->check();
-      
-      $this->expectOutputString('');
-      $alertinator->check();
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+      $this->expectOutputEquals('', [$alertinator, 'check']);
       
       // The 5th alert should fire an email.
       $this->expectOutputStartsAndEndsWith(
@@ -276,6 +270,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
             'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
          ],
       ]);
+      $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
       
       // TODO: As you can see, this state is (maybe?) not handled well.
       // @see Alertinator::notifyClear()
@@ -306,26 +301,147 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          [$alertinator, 'check']
       );
    }
+
+   /**
+    * Test notification intervals
+    */
+   public function test_alert_reminders() {
+      $alertinator = new AlertinatorMocker([
+         'twilio' => ['fromNumber' => '1234567890'],
+         'checks' => [
+            'AlertinatorTest::failFourTimes' => [
+               'groups' => ['default'],
+               'alertAfter' => 3,
+               'clearAfter' => 2,
+               'remindEvery' => 1,
+               ],
+            ],
+         'groups' => ['default' => ['alice']],
+         'alertees' => [
+            'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
+         ],
+      ]);
+      $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
+
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message Threshold of 3 reached at",
+         ": Fail Four Times Test to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message Threshold of 3 reached at",
+         " (reminding every 1 fails): Fail Four Times Test to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message The alert 'AlertinatorTest::failFourTimes' was cleared at",
+         "to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+
+      $alertinator = new AlertinatorMocker([
+         'twilio' => ['fromNumber' => '1234567890'],
+         'checks' => [
+            'AlertinatorTest::failTripleBouncer' => [
+               'groups' => ['default'],
+               'alertAfter' => 1,
+               'clearAfter' => 2,
+               'remindEvery' => 2,
+               ],
+            ],
+         'groups' => ['default' => ['alice']],
+         'alertees' => [
+            'alice' => ['email' => ['alice@example.com', Alertinator::CRITICAL]],
+         ],
+      ]);
+      $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
+
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message Threshold of 1 reached at",
+         ": Fail 3Bouncer to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message Threshold of 1 reached at",
+         " (reminding every 2 fails): Fail 3Bouncer to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+
+      $this->expectOutputStartsAndEndsWith(
+         "Sending message The alert 'AlertinatorTest::failTripleBouncer' was cleared at",
+         "to alice@example.com via email.\n",
+         [$alertinator, 'check']
+      );
+
+      $this->expectOutputEquals('', [$alertinator, 'check']);
+
+   }
    
    /**
+    * Fail 4 times, then pass indefinitely.
+    */
+
+   public static function failFourTimes() {
+      static $counter = 0;
+
+      if ($counter++ < 4) {
+         throw new AlertinatorCriticalException('Fail Four Times Test');
+      }
+      return;
+   }
+
+   /**
     * Fail 5 times, then pass indefinitely.
-   */
+    */
+
    public static function failFiveTimes() {
-      static $count = 0;
-      $count++;
-      if ($count <= 5) {
+      static $counter = 0;
+
+      if ($counter++ < 5) {
          throw new AlertinatorCriticalException('Fail Five Times Test');
       }
       return;
    }
    
    /**
+    * Alternates between 3 fail/3 passes for 4 6-check cycles, then passes indefinitely.
+   */
+   public static function failTripleBouncer() {
+      static $counter = 0;
+      // By setting to true we can expect the first checks to be false because
+      // 0 % 3 == 0 and the initial value is flipped on first check.
+      static $passing = true;
+
+      if (!($counter % 3)) {
+         $passing = !$passing;
+      }
+
+      if ($counter++ < 24 && !$passing) {
+         throw new AlertinatorCriticalException('Fail 3Bouncer');
+      }
+      return;
+   }
+
+   /**
     * Alternates between fail/pass 25 times, then passes indefinitely.
    */
    public static function failBouncer() {
-      static $count = -1; // Needs to start at 0
-      $count++;
-      if (!($count % 2) && $count < 25) {
+      static $counter = 0;
+      if (!($counter % 2) && $counter++ < 25) {
          throw new AlertinatorCriticalException('Fail Bouncer');
       }
       return;
@@ -345,8 +461,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
    private function expectOutputEquals($expected, $callable, $params=[]) {
       ob_start();
       call_user_func_array($callable, $params);
-      $output = ob_get_contents();
-      ob_end_clean();
+      $output = ob_get_clean();
 
       $this->assertEquals($expected, $output);
    }
