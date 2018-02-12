@@ -255,7 +255,7 @@ class Alertinator {
    /**
     * Return a configured :class:`Services_Twilio` object.
     */
-   protected function getTwilio(): Service_Twilio {
+   protected function getTwilio(): Services_Twilio {
       if (!$this->_twilio) {
          $this->_twilio = new Services_Twilio(
             $this->twilio['accountSid'],
@@ -269,7 +269,7 @@ interface alertLogger {
    public function writeAlert(string $name, bool $status, ?int $ts);
    public function readAlerts(string $name): array;
    public function resetAlerts(string $name);
-   public function isInAlert(string $name);
+   public function isInAlert(string $name): bool;
 }
 
 class fileLogger implements alertLogger {
@@ -330,7 +330,7 @@ class fileLogger implements alertLogger {
    /**
     * Determine if there's at least one failure recorded.
    */
-   public function isInAlert(string $name): int {
+   public function isInAlert(string $name): bool {
       return count($this->readAlerts($name));
    }
 
