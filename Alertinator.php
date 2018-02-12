@@ -35,7 +35,7 @@ class Alertinator {
 
    protected $_twilio;
 
-   public function __construct($config, alertLogger $logger = NULL) {
+   public function __construct(array $config, alertLogger $logger = null) {
       $this->twilio = $config['twilio'];
       $this->checks = $config['checks'];
       $this->groups = $config['groups'];
