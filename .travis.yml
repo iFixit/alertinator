@@ -6,5 +6,5 @@ before_install:
     - git submodule update --init --recursive
 language: php
 php:
-  - 7.0
+  - 7.1
 script: phpunit AlertinatorTest.php
