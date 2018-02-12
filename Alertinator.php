@@ -95,7 +95,7 @@ class Alertinator {
       // We only get here if there was at least 1 failure, but 1 failure may not
       // exceed the alertAfter threshold. If the check succeeds without
       // reaching the alert threshold, reset the log silently.
-      // TODO: this will break terribly for bouncing errors, e.g. pass-> fail->
+      // Note: this will break terribly for bouncing errors, e.g. pass-> fail->
       //       pass-> fail-> pass-> fail. Account for this.
       if (count($log) < $alertAfter) {
          $this->logger->resetAlerts($check);
