@@ -10,23 +10,23 @@ require 'Alertinator.php';
  * external-service-using in Alertinator.
  */
 class AlertinatorMocker extends Alertinator {
-   public function extractAlertees($alerteeGroups) {
+   public function extractAlertees(iterable $alerteeGroups): array {
       return parent::extractAlertees($alerteeGroups);
    }
 
-   public function alert($exception, $alertee) {
+   public function alert(AlertinatorException $exception, iterable $alertee) {
       return parent::alert($exception, $alertee);
    }
 
-   public function email($address, $message) {
+   public function email(string $address, string $message) {
       echo "Sending message $message to $address via email.\n";
    }
 
-   public function getTwilioSms() {
+   public function getTwilioSms(): Services_Twilio {
       return new TwilioMocker();
    }
 
-   public function getTwilioCall() {
+   public function getTwilioCall(): Services_Twilio {
       return new TwilioMocker();
    }
 }
@@ -37,7 +37,9 @@ class AlertinatorMocker extends Alertinator {
  * can't call it like a method, and I'm not going to alter the source to make
  * the tests slightly better.
  */
-class TwilioMocker {
+class TwilioMocker extends Services_Twilio {
+   function __construct() { }
+
    public function sendMessage($fromNumber, $toNumber, $message) {
       echo "Sending message $message to $toNumber via sms.\n";
    }
@@ -275,8 +277,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       // TODO: As you can see, this state is (maybe?) not handled well.
       // @see Alertinator::notifyClear()
       for ($i = 0; $i < 19; $i++) {
-         $this->expectOutputString('');
-         $alertinator->check();   
+         $this->expectOutputString('', [$alertinator, 'check']);
       }
    }
 
@@ -401,7 +402,6 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       if ($counter++ < 4) {
          throw new AlertinatorCriticalException('Fail Four Times Test');
       }
-      return;
    }
 
    /**
@@ -414,7 +414,6 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       if ($counter++ < 5) {
          throw new AlertinatorCriticalException('Fail Five Times Test');
       }
-      return;
    }
    
    /**
@@ -433,7 +432,6 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       if ($counter++ < 24 && !$passing) {
          throw new AlertinatorCriticalException('Fail 3Bouncer');
       }
-      return;
    }
 
    /**
@@ -441,10 +439,10 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
    */
    public static function failBouncer() {
       static $counter = 0;
+
       if (!($counter % 2) && $counter++ < 25) {
          throw new AlertinatorCriticalException('Fail Bouncer');
       }
-      return;
    }
 
    /**

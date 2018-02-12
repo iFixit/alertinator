@@ -41,7 +41,6 @@ class Alertinator {
       $this->groups = $config['groups'];
       $this->alertees = $config['alertees'];
       $this->logger = $logger ?? new fileLogger();
-      
    }
 
    /**
@@ -57,10 +56,9 @@ class Alertinator {
          // determine if *After properties were defined.
          $alertAfter    = $properties['alertAfter'] ?? 0;
          $clearAfter    = $properties['clearAfter'] ?? 0;
-         $remindEvery   = $properties['remindEvery'] ?? $alertAfter;
-         $remindEvery   = $remindEvery ?: 1;
+         $remindEvery   = $properties['remindEvery'] ?? $alertAfter ?: 1;
          $alerteeGroups = $properties['groups'] ?? $properties;
-         
+
          try {
             call_user_func($check);
             if ($clearAfter && $this->logger->isInAlert($check)) {
@@ -75,23 +73,23 @@ class Alertinator {
             // know about it.
             $message = "Internal failure in check:\n" . $e->getMessage();
             $this->alertGroups(
-               new AlertinatorWarningException($message),
-               $alerteeGroups
+             new AlertinatorWarningException($message),
+             $alerteeGroups
             );
             // Rethrow so your standard exception handler also gets it.
             throw $e;
          }
       }
    }
-   
+
    /**
     * Threshold notification: determine if an all-clear alert should be sent,
     * and if so, send it and reset the logger.
    */
-   private function notifyClear($check, $alertAfter, $clearAfter, $alerteeGroups) {
+   private function notifyClear(string $check, int $alertAfter, int $clearAfter, array $alerteeGroups) {
       $log = $this->logger->readAlerts($check);
       krsort($log);
-      
+
       // We only get here if there was at least 1 failure, but 1 failure may not
       // exceed the alertAfter threshold. If the check succeeds without
       // reaching the alert threshold, reset the log silently.
@@ -99,10 +97,7 @@ class Alertinator {
       //       pass-> fail-> pass-> fail. Account for this.
       if (count($log) < $alertAfter) {
          $this->logger->resetAlerts($check);
-         return;
-      }
-      
-      if (count($log) >= $clearAfter) {
+      } else if (count($log) >= $clearAfter) {
          $clears = 0;
          // Only notify a clear if the check passes > $clearAfter in a row.
          foreach ($log as $alert) {
@@ -124,19 +119,21 @@ class Alertinator {
          }
       }
    }
-    
+
    /**
     * Threshold notification: determine if a failure alert should be sent, and
     * if so, send it.
-   */  
-   private function notifyFailure($check, $alertAfter, $alerteeGroups, $e, $remindEvery) {
+   */
+   private function notifyFailure(string $check, int $alertAfter,
+    iterable $alerteeGroups, Exception $e, int $remindEvery) {
       $log = $this->logger->readAlerts($check);
       $fails = 0;
 
       foreach ($log as $alert) {
-         if (!$alert['status']) {
-            $fails++;
+         if ($alert['status']) {
+            break;
          }
+         $fails++;
       }
 
       $reminderTriggered = $fails > $alertAfter
@@ -152,8 +149,8 @@ class Alertinator {
          $this->alertGroups($e, $alerteeGroups);
       }
    }
-   
-   protected function alertGroups($exception, $alerteeGroups) {
+
+   protected function alertGroups(Exception $exception, iterable $alerteeGroups) {
       $alertees = $this->extractAlertees($alerteeGroups);
       foreach ($alertees as $alertee) {
          $this->alert($exception, $this->alertees[$alertee]);
@@ -166,7 +163,7 @@ class Alertinator {
     * :returns: An iterable of strings corresponding to alertee names in
     *           ``$this->alertees``.
     */
-   protected function extractAlertees($alerteeGroups) {
+   protected function extractAlertees(iterable $alerteeGroups): iterable {
       $alertees = [];
       foreach ($alerteeGroups as $alerteeGroup) {
          $alertees = array_merge($alertees, $this->groups[$alerteeGroup]);
@@ -182,7 +179,7 @@ class Alertinator {
     * :param array $alertee: An array describing an alertee in the format
     *                        of ``$this->alertees``.
     */
-   protected function alert($exception, $alertee) {
+   protected function alert(AlertinatorException $exception, iterable $alertee) {
       foreach (array_keys($alertee) as $contactMethod) {
          list($destination, $alertingLevel) = $alertee[$contactMethod];
          if ($exception::bitmask & $alertingLevel) {
@@ -190,11 +187,11 @@ class Alertinator {
          }
       }
    }
-   
+
    /**
     * We sometimes need to modify the Exception's message for threshold alerts.
    */
-   private function prependExceptionMessage($newMessage, $e) {
+   private function prependExceptionMessage(string $newMessage, Exception $e): Exception {
       $oldMsg = $e->getMessage();
       $newMsg = $newMessage . $oldMsg;
       $eClass = get_class($e);
@@ -204,7 +201,7 @@ class Alertinator {
    /**
     * Send an email to ``$address`` with ``$message`` as the body.
     */
-   protected function email($address, $message) {
+   protected function email(string $address, string $message) {
       if (!mail($address, $this->emailSubject, $message)) {
          throw new Exception("Sending email to $address failed.");
       }
@@ -213,7 +210,7 @@ class Alertinator {
    /**
     * Send an SMS of ``$message`` through Twilio to ``$number``.
     */
-   protected function sms($number, $message) {
+   protected function sms(string $number, string $message) {
       // For reasons unknown, SMS doesn't seem to need the '+1' prepended like
       // phone calls do.  I probably just don't understand telephones.
       //$number = '+1' . $number;
@@ -225,7 +222,7 @@ class Alertinator {
     * Make a phone call through Twilio to ``$number``, with text-to-speech of
     * ``$message``.
     */
-   protected function call($number, $message) {
+   protected function call(string $number, string $message) {
       $twiml = new Services_Twilio_Twiml();
       $twiml->say($message);
       $messageUrl = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
@@ -241,7 +238,7 @@ class Alertinator {
     * This function exists partly to ease mocking, and partly to abstract away
     * Twilio's deep object inheritance.
     */
-   protected function getTwilioSms() {
+   protected function getTwilioSms(): Services_Twilio {
       return $this->getTwilio()->account->messages;
    }
 
@@ -251,14 +248,14 @@ class Alertinator {
     * This function exists partly to ease mocking, and partly to abstract away
     * Twilio's deep object inheritance.
     */
-   protected function getTwilioCall() {
+   protected function getTwilioCall(): Services_Twilio {
       return $this->getTwilio()->account->calls;
    }
 
    /**
     * Return a configured :class:`Services_Twilio` object.
     */
-   protected function getTwilio() {
+   protected function getTwilio(): Service_Twilio {
       if (!$this->_twilio) {
          $this->_twilio = new Services_Twilio(
             $this->twilio['accountSid'],
@@ -269,14 +266,14 @@ class Alertinator {
 }
 
 interface alertLogger {
-   public function writeAlert($name, $status, $ts);
-   public function readAlerts($name);
-   public function resetAlerts($name);
-   public function isInAlert($name);
+   public function writeAlert(string $name, bool $status, ?int $ts);
+   public function readAlerts(string $name): array;
+   public function resetAlerts(string $name);
+   public function isInAlert(string $name);
 }
 
 class fileLogger implements alertLogger {
-   
+
    /**
     * Write an alert to the logger.
     *
@@ -284,66 +281,65 @@ class fileLogger implements alertLogger {
     * @param $status bool  0 = fail, 1 = success
     * @param $ts int  Unix Timestamp of the event.
    */
-   public function writeAlert($name, $status, $ts = FALSE) {
-      $ts = $ts ?: time();
+   public function writeAlert(string $name, bool $status, ?int $ts = null) {
+      $filename = $this->getLogFileName($name);
+
       $log = $this->readAlerts($name);
-      
-      $alert = [
-                  'ts' => $ts,
-                  'status' => $status,
-                  'check' => $name,
-               ];
-      
-      $log[] = $alert;
-      if (!$fp = fopen($this->getLogFileName($name), 'w')) {
-         throw new Exception("Could not open log file " . $this->getLogFileName($name) . " for writing.");
+      $log[] = [
+       'ts' => $ts ?? time(),
+       'status' => $status,
+       'check' => $name,
+      ];
+
+      if (!file_put_contents($filename, json_encode($log))) {
+         throw new Exception("Could not open log file " . $filename . " for writing.");
       }
-      fwrite($fp, json_encode($log));
-      fclose($fp); 
    }
-   
+
    /**
     * Return all alerts for a given key.
    */
-   public function readAlerts($name) {
-      $log = array();
-      if (file_exists($this->getLogFileName($name))) {
-         $prevLog = file_get_contents($this->getLogFileName($name));
-         $log = json_decode($prevLog, true);  
-      }
-      return $log;
+   public function readAlerts(string $name): array {
+      $filename = $this->getLogFileName($name);
+
+      return file_exists($filename) ?
+       json_decode(file_get_contents($filename), true) :
+       [];
    }
-   
+
    /**
     * Safely resets all alerts for a given key.
    */
-   public function safelyResetAlerts($name) {
-      try {!unlink($this->getLogFileName($name)); }
-      catch (Exception $e) { }
+   public function safelyResetAlerts(string $name) {
+      $log = $this->getLogFileName($name);
+
+      if (file_exists($log)) {
+         unlink($log);
+      }
    }
 
    /**
     * Reset all alerts for a given key.
    */
-   public function resetAlerts($name) {
+   public function resetAlerts(string $name) {
       if(!unlink($this->getLogFileName($name))) {
          throw new Exception("Could not reset log file " . $this->getLogFileName($name) . "!");
       }
    }
-   
+
    /**
     * Determine if there's at least one failure recorded.
    */
-   public function isInAlert($name) {
+   public function isInAlert(string $name): int {
       return count($this->readAlerts($name));
    }
-   
-   private function getLogFileName($name) {
+
+   private function getLogFileName(string $name): string {
       $file = strtolower(mb_ereg_replace("([^\w\s\d\-_~,;:\[\]\(\).])", '', $name));
       return $this->getTmpDir() . '/' . $file . '.log';
    }
-   
-   private function getTmpDir() {
+
+   private function getTmpDir(): string {
       return ini_get('upload_tmp_dir') ?: sys_get_temp_dir();
    }
 }
