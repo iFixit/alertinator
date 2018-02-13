@@ -136,15 +136,16 @@ class Alertinator {
          $fails++;
       }
 
-      $reminderTriggered = $fails > $alertAfter
-       && ($fails - $alertAfter) % $remindEvery == 0;
+      $atAlertThreshold = $fails === $alertAfter;
+      $pastAlertThreshold = $fails > $alertAfter;
+      $remindThisInterval = (($fails - $alertAfter) % $remindEvery) == 0;
+      $reminderNotification = $remindThisInterval && $pastAlertThreshold ?
+       " (reminding every {$remindEvery} fails)" : '';
 
-      if ($fails === $alertAfter || $reminderTriggered) {
+      if ($atAlertThreshold || ($pastAlertThreshold && $remindThisInterval)) {
          $last = end($log);
          $newMsg = "Threshold of $alertAfter reached at "
-          . date(DATE_RFC2822, $last['ts'])
-          . ($reminderTriggered ? " (reminding every {$remindEvery} fails)" : '')
-          . ": ";
+          . date(DATE_RFC2822, $last['ts']) . $reminderNotification . ": ";
          $e = $this->prependExceptionMessage($newMsg, $e);
          $this->alertGroups($e, $alerteeGroups);
       }
@@ -238,7 +239,7 @@ class Alertinator {
     * This function exists partly to ease mocking, and partly to abstract away
     * Twilio's deep object inheritance.
     */
-   protected function getTwilioSms(): Services_Twilio {
+   protected function getTwilioSms() {
       return $this->getTwilio()->account->messages;
    }
 
@@ -248,7 +249,7 @@ class Alertinator {
     * This function exists partly to ease mocking, and partly to abstract away
     * Twilio's deep object inheritance.
     */
-   protected function getTwilioCall(): Services_Twilio {
+   protected function getTwilioCall() {
       return $this->getTwilio()->account->calls;
    }
 

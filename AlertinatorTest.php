@@ -22,11 +22,11 @@ class AlertinatorMocker extends Alertinator {
       echo "Sending message $message to $address via email.\n";
    }
 
-   public function getTwilioSms(): Services_Twilio {
+   public function getTwilioSms() {
       return new TwilioMocker();
    }
 
-   public function getTwilioCall(): Services_Twilio {
+   public function getTwilioCall() {
       return new TwilioMocker();
    }
 }
