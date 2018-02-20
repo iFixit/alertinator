@@ -50,19 +50,14 @@ money (the Twilio integration) - it's easy to swap it out for an alternative,
 or even ignore it altogether.
 
 An :class:`Alertinator` is constructed with one argument, a nested associative
-array containing all the information about your alerting system.  Due to PHP's
-lack of support for `splatting`_ parameters, the single-array method was chosen
-to provide the greatest calling flexibility - you can construct it piece by
-piece or all in one go.
+array containing all the information about your alerting system:
 
 ``$config`` consists of four parts:
-
-.. _splatting: https://endofline.wordpress.com/2011/01/21/the-strange-ruby-splat/
 
 Twilio
 ^^^^^^
 
-The ``twilio`` key should refer to an associate array with three entries::
+The ``twilio`` key should refer to an associative array with three entries::
 
     'twilio' => [
        'fromNumber' => '+12345678901',
@@ -89,8 +84,12 @@ Checks
 ^^^^^^
 
 ``checks`` determines which alerts are checked and to whom notifications are
-sent.
+sent. Optionally, you can define an alert threshold (useful for twitchy checks).
+If you define an alert threshold, you should also define an all-clear threshold.
+If you use thresholds, an alert logger will be used for alert persistence. More
+information on the logger interface is in a section below::
 
+    // Simple implementation:
     'checks' => [
        'checkDB' => ['ops', 'devs'],
     ],
@@ -98,9 +97,25 @@ sent.
 In this case, ``checkDB`` is a global function that throws an
 :class:`AlertinatorException` when some alerting threshold is passed.  When
 that happens, the alert will be sent out to members of the ``ops`` and ``devs``
-:ref:`groups`.
+:ref:`groups`::
 
-It's not necessarily a good idea to use global function for your alerts.
+    // Complex implementation, with alert thresholds:
+    'checks' => [
+        'checkDB' => [
+            'groups' => ['ops'],
+            'alertAfter'  => 5,
+            'clearAfter'  => 2,
+            'remindEvery' => 1,
+        ],
+    ],
+
+In this case, ``checkDB`` is still the check function, and when the alert
+exception is thrown, the alert will be sent to the ``ops`` group after the
+``alertAfter`` threshold is met. Also, once the check passes ``clearAfter``
+times in a row, an all-clear alert will be sent. Finally, reminder alerts are
+limited to only every ``remindEvery`` errors after the first alert is sent.
+
+It's not necessarily a good idea to use global functions for your alerts.
 Correspondingly, alert names can be any PHP `callable`_, e.g.
 ``AlertChecker::checkDB``.
 
@@ -112,7 +127,7 @@ Groups
 ^^^^^^
 
 Groups allow you to alert a number of people together without having to repeat
-their names.
+their names::
 
     'groups' => [
        'ops' => ['alice'],
@@ -132,7 +147,7 @@ If an alert is triggered but no one's around to hear it, your boss will let you
 know the next morning whether the system broke (hint: the answer is always
 yes).
 
-``alertees`` comprise the most complex of the data structures in ``$config``.
+``alertees`` comprises the most complex of the data structures in ``$config``.
 Here's an example with two people::
 
     'alertees' => [
@@ -166,9 +181,8 @@ this::
 We've extended :class:`Alertinator` to add this method::
 
     class AlertChecker extends Alertinator {
-       /**
-        * Send $message to $recipient via DevChat.
-        */
+       
+       // Send $message to $recipient via DevChat. 
        protected function devChatAnnounce($recipient, $message) {
           // Code here.
        }
@@ -177,3 +191,39 @@ We've extended :class:`Alertinator` to add this method::
 And we construct and call ``alert()`` on our ``AlertChecker`` class instead of
 :class:`Alertinator` directly.
 
+Notification thresholds
+^^^^^^^^
+
+Notification thresholds are definable on a per-check level. As in the example
+above, you define your thresholds like this::
+
+    // With alert thresholds:
+    'checks' => [
+      'checkDB' => [
+         'groups' => ['ops'],
+         'alertAfter' => 5,
+         'clearAfter' => 2,
+         'remindEvery' => 1,
+         ],
+      ],
+      
+``alertAfter``: send alerts after this many sequential failures. This is counted
+in a row: any successes on the same check before the alert threshold is met will
+reset the alert counter silently.
+
+``clearAfter``: send an all-clear message after this many sequential successes.
+Note: the all-clear message will send at the ``AlertinatorCriticalException``
+level, no matter what level the initial exception was.
+
+``remindEvery``: this threshold limits reminders to only every X errors after
+the first alert is sent.
+
+Alert persistence adaptor
+^^^^^^^^
+
+Using alert thresholds requires a persistence layer. Alertinator by default uses
+the filesystem and PHP's tmp directory for this purpose. You can define your own
+interface (for example, if you'd like to use MySQL) by implementing the
+``alertLogger`` interface.
+
+If you don't use notification thresholds, this section doesn't apply to you.
