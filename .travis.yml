@@ -3,6 +3,7 @@ git:
     submodules: false
 # See: https://gist.github.com/iedemam/9830045
 before_install:
+    - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
     - git submodule update --init --recursive
 language: php
 php:
