@@ -58,7 +58,8 @@ class Alertinator {
          $clearAfter    = $properties['clearAfter'] ?? 0;
          $remindEvery   = $properties['remindEvery'] ?? $alertAfter ?: 1;
          $alerteeGroups = $properties['groups'] ?? $properties;
-         $allClearGroup = $this->groups['allClear'] ? ['allClear'] : $alerteeGroups;
+         $allClearGroup = array_key_exists('allClear', $this->groups) ?
+          ['allClear'] : $alerteeGroups;
 
          try {
             call_user_func($check);
