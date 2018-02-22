@@ -27,6 +27,9 @@ phone calls. ::
           'default' => [
              'you',
           ],
+          'allClear' => [
+             'you',
+          ],
        ],
        'alertees' => [
           'you' => [
