@@ -64,6 +64,9 @@ reasonable subset of features at a fraction of the cost.
           'default' => [
              'james',
           ],
+          'allClear' => [
+             'james',
+          ],
        ],
        'alertees' => [
           'james' => [

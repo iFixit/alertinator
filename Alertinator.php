@@ -58,12 +58,14 @@ class Alertinator {
          $clearAfter    = $properties['clearAfter'] ?? 0;
          $remindEvery   = $properties['remindEvery'] ?? $alertAfter ?: 1;
          $alerteeGroups = $properties['groups'] ?? $properties;
+         $allClearGroup = array_key_exists('allClear', $this->groups) ?
+          ['allClear'] : $alerteeGroups;
 
          try {
             call_user_func($check);
             if ($clearAfter && $this->logger->isInAlert($check)) {
                $this->logger->writeAlert($check, 1, time());
-               $this->notifyClear($check, $alertAfter, $clearAfter, $alerteeGroups);
+               $this->notifyClear($check, $alertAfter, $clearAfter, $allClearGroup);
             }
          } catch (AlertinatorException $e) {
             $this->logger->writeAlert($check, 0, time());
