@@ -7,6 +7,10 @@ require 'Alertinator.php';
 
 use Twilio\Rest\Client;
 use Twilio\TwiML\VoiceResponse;
+use Twilio\Rest\Api\V2010\Account\MessageList;
+use Twilio\Rest\Api\V2010\Account\CallList;
+use Twilio\Rest\Api\V2010\Account\MessageInstance;
+use Twilio\Rest\Api\V2010\Account\CallInstance;
 
 /**
  * This mocker class exists to allow us to test protected and
@@ -17,37 +21,48 @@ class AlertinatorMocker extends Alertinator {
       return parent::extractAlertees($alerteeGroups);
    }
 
-   public function alert(AlertinatorException $exception, iterable $alertee) {
-      return parent::alert($exception, $alertee);
+   public function alert(AlertinatorException $exception, iterable $alertee): void {
+      parent::alert($exception, $alertee);
    }
 
-   public function email(string $address, string $message) {
+   public function email(string $address, string $message): void {
       echo "Sending message $message to $address via email.\n";
    }
 
-   public function getTwilioSms() {
-      return new TwilioMocker();
+   public function getTwilioSms(): MessageList {
+      return new TwilioMessagesMocker();
    }
 
-   public function getTwilioCall() {
-      return new TwilioMocker();
+   public function getTwilioCall(): CallList {
+      return new TwilioCallsMocker();
    }
 }
 
-/**
- * While normally I'd use `stdClass` to fake an object inline, you can't add
- * methods into stdClass on the fly.  You can add an anonymous function, but
- * can't call it like a method, and I'm not going to alter the source to make
- * the tests slightly better.
- */
-class TwilioMocker extends Client {
-   function __construct() { }
+class MockMessage extends MessageInstance {
+   public function __construct() { }
+}
+class MockCall extends CallInstance {
+   public function __construct() { }
+}
 
-   public function sendMessage($fromNumber, $toNumber, $message) {
+class TwilioMessagesMocker extends MessageList {
+   public function __construct() { }
+
+   public function create(string $toNumber, array $options = []): MessageInstance {
+      $from = $options['from'];
+      $message = $options['body'];
       echo "Sending message $message to $toNumber via sms.\n";
+      return new MockMessage();
    }
-   public function create($fromNumber, $toNumber, $messageUrl) {
-      echo "Sending message from $messageUrl to $toNumber via call.\n";
+}
+
+class TwilioCallsMocker extends CallList {
+   public function __construct() { }
+
+   public function create(string $to, string $from, array $options = []): CallInstance {
+      $messageUrl = $options['url'];
+      echo "Sending message from $messageUrl to $to via call.\n";
+      return new MockCall();
    }
 }
 
