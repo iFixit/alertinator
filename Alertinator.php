@@ -1,6 +1,9 @@
 <?php
 
-require 'twilio-php/Services/Twilio.php';
+require 'twilio-php/src/Twilio/autoload.php';
+
+use Twilio\Rest\Client;
+use Twilio\TwiML\VoiceResponse;
 
 /**
  * The base exception class Alertinator uses.
@@ -226,7 +229,7 @@ class Alertinator {
     * ``$message``.
     */
    protected function call(string $number, string $message) {
-      $twiml = new Services_Twilio_Twiml();
+      $twiml = new VoiceResponse();
       $twiml->say($message);
       $messageUrl = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
 
@@ -242,7 +245,7 @@ class Alertinator {
     * Twilio's deep object inheritance.
     */
    protected function getTwilioSms() {
-      return $this->getTwilio()->account->messages;
+      return $this->getTwilio()->messages;
    }
 
    /**
@@ -252,15 +255,15 @@ class Alertinator {
     * Twilio's deep object inheritance.
     */
    protected function getTwilioCall() {
-      return $this->getTwilio()->account->calls;
+      return $this->getTwilio()->calls;
    }
 
    /**
-    * Return a configured :class:`Services_Twilio` object.
+    * Return a configured :class:`Client` object.
     */
-   protected function getTwilio(): Services_Twilio {
+   protected function getTwilio(): Client {
       if (!$this->_twilio) {
-         $this->_twilio = new Services_Twilio(
+         $this->_twilio = new Client(
             $this->twilio['accountSid'],
             $this->twilio['authToken']);
       }

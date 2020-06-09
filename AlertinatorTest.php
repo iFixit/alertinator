@@ -5,6 +5,9 @@ error_reporting(E_ALL);
 
 require 'Alertinator.php';
 
+use Twilio\Rest\Client;
+use Twilio\TwiML\VoiceResponse;
+
 /**
  * This mocker class exists to allow us to test protected and
  * external-service-using in Alertinator.
@@ -37,7 +40,7 @@ class AlertinatorMocker extends Alertinator {
  * can't call it like a method, and I'm not going to alter the source to make
  * the tests slightly better.
  */
-class TwilioMocker extends Services_Twilio {
+class TwilioMocker extends Client {
    function __construct() { }
 
    public function sendMessage($fromNumber, $toNumber, $message) {
@@ -49,7 +52,7 @@ class TwilioMocker extends Services_Twilio {
 }
 
 class AlertinatorTest extends PHPUnit\Framework\TestCase {
-   protected function setUp() {
+   protected function setUp(): void {
       date_default_timezone_set("America/Los_Angeles");
       // Create an Alertinator with just enough config to construct.
       $this->alertinator = new AlertinatorMocker(
@@ -150,7 +153,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       ];
       // Because Twilio doesn't allow you to just send along a message
       // directly, you have to create a url that returns the message.
-      $twiml = new Services_Twilio_Twiml();
+      $twiml = new VoiceResponse();
       $twiml->say('foobaz');
       $url = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
 
@@ -281,11 +284,13 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       }
    }
 
-   /**
-    * @expectedException         PHPUnit\Framework\Error\Notice
-    * @expectedExceptionMessage  Use of undefined constant sdf - assumed 'sdf'
-    */
    public function test_check_errors() {
+      $message = "Internal failure in check:\n" .
+                 "Use of undefined constant sdf - assumed 'sdf'";
+
+      $this->expectWarning();
+      $this->expectWarningMessageMatches("/sdf/");
+
       $alertinator = new AlertinatorMocker([
          'twilio' => ['fromNumber' => '1234567890'],
          'checks' => ['AlertinatorTest::buggyCheck' => ['default']],
@@ -295,12 +300,14 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          ],
       ]);
 
-      $message = "Internal failure in check:\n" .
-                 "Use of undefined constant sdf - assumed 'sdf'";
-      $this->expectOutputEquals(
-         "Sending message $message to alice@example.com via email.\n",
-         [$alertinator, 'check']
-      );
+      try {
+         $this->expectOutputEquals(
+            "Sending message $message to alice@example.com via email.\n",
+            [$alertinator, 'check']
+         );
+      } finally {
+         ob_end_clean();
+      }
    }
 
    /**
