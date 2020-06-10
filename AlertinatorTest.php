@@ -178,7 +178,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          [new AlertinatorWarningException('foobaz'), $alertees]
       );
    }
-   
+
    /**
     * Test the default storage interface.
    */
@@ -186,25 +186,25 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       $fl = new fileLogger();
       // Nothing logged, this should be empty:
       $this->assertEmpty($fl->isInAlert('foofail'));
-      
+
       // Write a failure, see if it was written:
       $fl->writeAlert('foofail', 0);
       $log = $fl->readAlerts('foofail');
       $this->assertNotEquals('barfail', $log[0]['check']);
       $this->assertEquals('foofail', $log[0]['check']);
       $this->assertEquals(0, $log[0]['status']);
-      
+
       // Write a success, see if it was written:
       $fl->writeAlert('foofail', 1);
       $log = $fl->readAlerts('foofail');
       $this->assertNotEquals('barfail', $log[1]['check']);
       $this->assertEquals('foofail', $log[1]['check']);
       $this->assertEquals(1, $log[1]['status']);
-      
+
       // Reset alerts, confirm that the log is empty:
       $fl->resetAlerts('foofail');
       $this->assertEmpty($fl->isInAlert('foofail'));
-      
+
       // Since order is important for determining alert clears, see if slamming
       // the interface breaks things.
       $test_values = array();
@@ -218,12 +218,12 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       foreach ($test_values as $k => $v) {
          $this->assertEquals($v, $log[$k]['status']);
       }
-      
+
       // Reset alerts, confirm again that the log is empty:
       $fl->resetAlerts('megacount');
       $this->assertEmpty($fl->isInAlert('megacount'));
    }
-   
+
    /**
     * Test the threshold functionality.
    */
@@ -243,35 +243,35 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          ],
       ]);
       $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
-      
+
       // The first 4 alerts should do nothing...
       $this->expectOutputEquals('', [$alertinator, 'check']);
       $this->expectOutputEquals('', [$alertinator, 'check']);
       $this->expectOutputEquals('', [$alertinator, 'check']);
       $this->expectOutputEquals('', [$alertinator, 'check']);
-      
+
       // The 5th alert should fire an email.
       $this->expectOutputStartsAndEndsWith(
          "Sending message Threshold of 5 reached at",
          ": Fail Five Times Test to alice@example.com via email.\n",
          [$alertinator, 'check']
       );
-      
+
       // Clear #1...
       $this->expectOutputString('');
       $alertinator->check();
-      
+
       // The 2nd clear should fire an email.
       $this->expectOutputStartsAndEndsWith(
          "Sending message The alert 'AlertinatorTest::failFiveTimes' was cleared at",
          "to alice@example.com via email.\n",
          [$alertinator, 'check']
       );
-      
+
       // Make sure everything was deleted.
       $this->assertEmpty($alertinator->logger->isInAlert('AlertinatorTest::failFiveTimes'));
-      
-      
+
+
       // Now let's simulate a failure state that "bounces" between fail and
       // success:
       $alertinator = new AlertinatorMocker([
@@ -289,7 +289,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          ],
       ]);
       $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
-      
+
       // TODO: As you can see, this state is (maybe?) not handled well.
       // @see Alertinator::notifyClear()
       for ($i = 0; $i < 19; $i++) {
@@ -411,7 +411,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       $this->expectOutputEquals('', [$alertinator, 'check']);
 
    }
-   
+
    /**
     * Fail 4 times, then pass indefinitely.
     */
@@ -435,7 +435,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          throw new AlertinatorCriticalException('Fail Five Times Test');
       }
    }
-   
+
    /**
     * Alternates between 3 fail/3 passes for 4 6-check cycles, then passes indefinitely.
    */
@@ -483,7 +483,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
 
       $this->assertEquals($expected, $output);
    }
-   
+
    /**
     * Seems silly, but failure and reset messages have timestamps in the middle
     * of them which would be cumbersome to persist. Instead, we can check the
