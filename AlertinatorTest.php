@@ -39,14 +39,14 @@ class AlertinatorMocker extends Alertinator {
 }
 
 class MockMessage extends MessageInstance {
-   public function __construct() { }
+   public function __construct() {}
 }
 class MockCall extends CallInstance {
-   public function __construct() { }
+   public function __construct() {}
 }
 
 class TwilioMessagesMocker extends MessageList {
-   public function __construct() { }
+   public function __construct() {}
 
    public function create(string $toNumber, array $options = []): MessageInstance {
       $from = $options['from'];
@@ -57,11 +57,11 @@ class TwilioMessagesMocker extends MessageList {
 }
 
 class TwilioCallsMocker extends CallList {
-   public function __construct() { }
+   public function __construct() {}
 
    public function create(string $to, string $from, array $options = []): CallInstance {
-      $messageUrl = $options['url'];
-      echo "Sending message from $messageUrl to $to via call.\n";
+      $twiml = $options['Twiml'];
+      echo "Sending message with TwiML $twiml to $to via call.\n";
       return new MockCall();
    }
 }
@@ -166,16 +166,14 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          'sms' => ['1234567890', Alertinator::WARNING],
          'call' => ['1234567890', Alertinator::WARNING],
       ];
-      // Because Twilio doesn't allow you to just send along a message
-      // directly, you have to create a url that returns the message.
       $twiml = new VoiceResponse();
       $twiml->say('foobaz');
-      $url = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
+      $twiml->hangup();
 
       $this->expectOutputEquals(
          "Sending message foobaz to foo@example.com via email.\n"
          . "Sending message foobaz to 1234567890 via sms.\n"
-         . "Sending message from $url to +11234567890 via call.\n",
+         . "Sending message with TwiML $twiml to +11234567890 via call.\n",
          [$this->alertinator, 'alert'],
          [new AlertinatorWarningException('foobaz'), $alertees]
       );

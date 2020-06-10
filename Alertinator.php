@@ -235,11 +235,11 @@ class Alertinator {
    protected function call(string $number, string $message): void {
       $twiml = new VoiceResponse();
       $twiml->say($message);
-      $messageUrl = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
+      $twiml->hangup();
 
       $number = '+1' . $number;
       $this->getTwilioCall()->create(
-       $number, $this->twilio['fromNumber'], ['url' => $messageUrl]);
+       $number, $this->twilio['fromNumber'], ['Twiml' => $twiml]);
    }
 
    /**
