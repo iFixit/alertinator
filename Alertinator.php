@@ -1,6 +1,11 @@
 <?php
 
-require 'twilio-php/Services/Twilio.php';
+require 'twilio-php/src/Twilio/autoload.php';
+
+use Twilio\Rest\Client;
+use Twilio\TwiML\VoiceResponse;
+use Twilio\Rest\Api\V2010\Account\MessageList;
+use Twilio\Rest\Api\V2010\Account\CallList;
 
 /**
  * The base exception class Alertinator uses.
@@ -182,7 +187,7 @@ class Alertinator {
     * :param array $alertee: An array describing an alertee in the format
     *                        of ``$this->alertees``.
     */
-   protected function alert(AlertinatorException $exception, iterable $alertee) {
+   protected function alert(AlertinatorException $exception, iterable $alertee): void {
       foreach (array_keys($alertee) as $contactMethod) {
          list($destination, $alertingLevel) = $alertee[$contactMethod];
          if ($exception::bitmask & $alertingLevel) {
@@ -204,7 +209,7 @@ class Alertinator {
    /**
     * Send an email to ``$address`` with ``$message`` as the body.
     */
-   protected function email(string $address, string $message) {
+   protected function email(string $address, string $message): void {
       if (!mail($address, $this->emailSubject, $message)) {
          throw new Exception("Sending email to $address failed.");
       }
@@ -213,26 +218,28 @@ class Alertinator {
    /**
     * Send an SMS of ``$message`` through Twilio to ``$number``.
     */
-   protected function sms(string $number, string $message) {
+   protected function sms(string $number, string $message): void {
       // For reasons unknown, SMS doesn't seem to need the '+1' prepended like
       // phone calls do.  I probably just don't understand telephones.
       //$number = '+1' . $number;
-      $this->getTwilioSms()->sendMessage(
-       $this->twilio['fromNumber'], $number, $message);
+      $this->getTwilioSms()->create($number, [
+         'from' => $this->twilio['fromNumber'],
+         'body' => $message,
+      ]);
    }
 
    /**
     * Make a phone call through Twilio to ``$number``, with text-to-speech of
     * ``$message``.
     */
-   protected function call(string $number, string $message) {
-      $twiml = new Services_Twilio_Twiml();
+   protected function call(string $number, string $message): void {
+      $twiml = new VoiceResponse();
       $twiml->say($message);
-      $messageUrl = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
+      $twiml->hangup();
 
       $number = '+1' . $number;
       $this->getTwilioCall()->create(
-       $this->twilio['fromNumber'], $number, $messageUrl);
+       $number, $this->twilio['fromNumber'], ['Twiml' => $twiml]);
    }
 
    /**
@@ -241,8 +248,8 @@ class Alertinator {
     * This function exists partly to ease mocking, and partly to abstract away
     * Twilio's deep object inheritance.
     */
-   protected function getTwilioSms() {
-      return $this->getTwilio()->account->messages;
+   protected function getTwilioSms(): MessageList {
+      return $this->getTwilio()->messages;
    }
 
    /**
@@ -251,16 +258,16 @@ class Alertinator {
     * This function exists partly to ease mocking, and partly to abstract away
     * Twilio's deep object inheritance.
     */
-   protected function getTwilioCall() {
-      return $this->getTwilio()->account->calls;
+   protected function getTwilioCall(): CallList {
+      return $this->getTwilio()->calls;
    }
 
    /**
-    * Return a configured :class:`Services_Twilio` object.
+    * Return a configured :class:`Client` object.
     */
-   protected function getTwilio(): Services_Twilio {
+   protected function getTwilio(): Client {
       if (!$this->_twilio) {
-         $this->_twilio = new Services_Twilio(
+         $this->_twilio = new Client(
             $this->twilio['accountSid'],
             $this->twilio['authToken']);
       }

@@ -5,6 +5,13 @@ error_reporting(E_ALL);
 
 require 'Alertinator.php';
 
+use Twilio\Rest\Client;
+use Twilio\TwiML\VoiceResponse;
+use Twilio\Rest\Api\V2010\Account\MessageList;
+use Twilio\Rest\Api\V2010\Account\CallList;
+use Twilio\Rest\Api\V2010\Account\MessageInstance;
+use Twilio\Rest\Api\V2010\Account\CallInstance;
+
 /**
  * This mocker class exists to allow us to test protected and
  * external-service-using in Alertinator.
@@ -14,42 +21,53 @@ class AlertinatorMocker extends Alertinator {
       return parent::extractAlertees($alerteeGroups);
    }
 
-   public function alert(AlertinatorException $exception, iterable $alertee) {
-      return parent::alert($exception, $alertee);
+   public function alert(AlertinatorException $exception, iterable $alertee): void {
+      parent::alert($exception, $alertee);
    }
 
-   public function email(string $address, string $message) {
+   public function email(string $address, string $message): void {
       echo "Sending message $message to $address via email.\n";
    }
 
-   public function getTwilioSms() {
-      return new TwilioMocker();
+   public function getTwilioSms(): MessageList {
+      return new TwilioMessagesMocker();
    }
 
-   public function getTwilioCall() {
-      return new TwilioMocker();
+   public function getTwilioCall(): CallList {
+      return new TwilioCallsMocker();
    }
 }
 
-/**
- * While normally I'd use `stdClass` to fake an object inline, you can't add
- * methods into stdClass on the fly.  You can add an anonymous function, but
- * can't call it like a method, and I'm not going to alter the source to make
- * the tests slightly better.
- */
-class TwilioMocker extends Services_Twilio {
-   function __construct() { }
+class MockMessage extends MessageInstance {
+   public function __construct() {}
+}
+class MockCall extends CallInstance {
+   public function __construct() {}
+}
 
-   public function sendMessage($fromNumber, $toNumber, $message) {
+class TwilioMessagesMocker extends MessageList {
+   public function __construct() {}
+
+   public function create(string $toNumber, array $options = []): MessageInstance {
+      $from = $options['from'];
+      $message = $options['body'];
       echo "Sending message $message to $toNumber via sms.\n";
+      return new MockMessage();
    }
-   public function create($fromNumber, $toNumber, $messageUrl) {
-      echo "Sending message from $messageUrl to $toNumber via call.\n";
+}
+
+class TwilioCallsMocker extends CallList {
+   public function __construct() {}
+
+   public function create(string $to, string $from, array $options = []): CallInstance {
+      $twiml = $options['Twiml'];
+      echo "Sending message with TwiML $twiml to $to via call.\n";
+      return new MockCall();
    }
 }
 
 class AlertinatorTest extends PHPUnit\Framework\TestCase {
-   protected function setUp() {
+   protected function setUp(): void {
       date_default_timezone_set("America/Los_Angeles");
       // Create an Alertinator with just enough config to construct.
       $this->alertinator = new AlertinatorMocker(
@@ -148,21 +166,19 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          'sms' => ['1234567890', Alertinator::WARNING],
          'call' => ['1234567890', Alertinator::WARNING],
       ];
-      // Because Twilio doesn't allow you to just send along a message
-      // directly, you have to create a url that returns the message.
-      $twiml = new Services_Twilio_Twiml();
+      $twiml = new VoiceResponse();
       $twiml->say('foobaz');
-      $url = 'http://twimlets.com/echo?Twiml=' . urlencode($twiml);
+      $twiml->hangup();
 
       $this->expectOutputEquals(
          "Sending message foobaz to foo@example.com via email.\n"
          . "Sending message foobaz to 1234567890 via sms.\n"
-         . "Sending message from $url to +11234567890 via call.\n",
+         . "Sending message with TwiML $twiml to +11234567890 via call.\n",
          [$this->alertinator, 'alert'],
          [new AlertinatorWarningException('foobaz'), $alertees]
       );
    }
-   
+
    /**
     * Test the default storage interface.
    */
@@ -170,25 +186,25 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       $fl = new fileLogger();
       // Nothing logged, this should be empty:
       $this->assertEmpty($fl->isInAlert('foofail'));
-      
+
       // Write a failure, see if it was written:
       $fl->writeAlert('foofail', 0);
       $log = $fl->readAlerts('foofail');
       $this->assertNotEquals('barfail', $log[0]['check']);
       $this->assertEquals('foofail', $log[0]['check']);
       $this->assertEquals(0, $log[0]['status']);
-      
+
       // Write a success, see if it was written:
       $fl->writeAlert('foofail', 1);
       $log = $fl->readAlerts('foofail');
       $this->assertNotEquals('barfail', $log[1]['check']);
       $this->assertEquals('foofail', $log[1]['check']);
       $this->assertEquals(1, $log[1]['status']);
-      
+
       // Reset alerts, confirm that the log is empty:
       $fl->resetAlerts('foofail');
       $this->assertEmpty($fl->isInAlert('foofail'));
-      
+
       // Since order is important for determining alert clears, see if slamming
       // the interface breaks things.
       $test_values = array();
@@ -202,12 +218,12 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       foreach ($test_values as $k => $v) {
          $this->assertEquals($v, $log[$k]['status']);
       }
-      
+
       // Reset alerts, confirm again that the log is empty:
       $fl->resetAlerts('megacount');
       $this->assertEmpty($fl->isInAlert('megacount'));
    }
-   
+
    /**
     * Test the threshold functionality.
    */
@@ -227,35 +243,35 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          ],
       ]);
       $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
-      
+
       // The first 4 alerts should do nothing...
       $this->expectOutputEquals('', [$alertinator, 'check']);
       $this->expectOutputEquals('', [$alertinator, 'check']);
       $this->expectOutputEquals('', [$alertinator, 'check']);
       $this->expectOutputEquals('', [$alertinator, 'check']);
-      
+
       // The 5th alert should fire an email.
       $this->expectOutputStartsAndEndsWith(
          "Sending message Threshold of 5 reached at",
          ": Fail Five Times Test to alice@example.com via email.\n",
          [$alertinator, 'check']
       );
-      
+
       // Clear #1...
       $this->expectOutputString('');
       $alertinator->check();
-      
+
       // The 2nd clear should fire an email.
       $this->expectOutputStartsAndEndsWith(
          "Sending message The alert 'AlertinatorTest::failFiveTimes' was cleared at",
          "to alice@example.com via email.\n",
          [$alertinator, 'check']
       );
-      
+
       // Make sure everything was deleted.
       $this->assertEmpty($alertinator->logger->isInAlert('AlertinatorTest::failFiveTimes'));
-      
-      
+
+
       // Now let's simulate a failure state that "bounces" between fail and
       // success:
       $alertinator = new AlertinatorMocker([
@@ -273,7 +289,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          ],
       ]);
       $alertinator->logger->safelyResetAlerts(key($alertinator->checks));
-      
+
       // TODO: As you can see, this state is (maybe?) not handled well.
       // @see Alertinator::notifyClear()
       for ($i = 0; $i < 19; $i++) {
@@ -281,11 +297,13 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       }
    }
 
-   /**
-    * @expectedException         PHPUnit\Framework\Error\Notice
-    * @expectedExceptionMessage  Use of undefined constant sdf - assumed 'sdf'
-    */
    public function test_check_errors() {
+      $message = "Internal failure in check:\n" .
+                 "Use of undefined constant sdf - assumed 'sdf'";
+
+      $this->expectWarning();
+      $this->expectWarningMessageMatches("/sdf/");
+
       $alertinator = new AlertinatorMocker([
          'twilio' => ['fromNumber' => '1234567890'],
          'checks' => ['AlertinatorTest::buggyCheck' => ['default']],
@@ -295,12 +313,14 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          ],
       ]);
 
-      $message = "Internal failure in check:\n" .
-                 "Use of undefined constant sdf - assumed 'sdf'";
-      $this->expectOutputEquals(
-         "Sending message $message to alice@example.com via email.\n",
-         [$alertinator, 'check']
-      );
+      try {
+         $this->expectOutputEquals(
+            "Sending message $message to alice@example.com via email.\n",
+            [$alertinator, 'check']
+         );
+      } finally {
+         ob_end_clean();
+      }
    }
 
    /**
@@ -391,7 +411,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       $this->expectOutputEquals('', [$alertinator, 'check']);
 
    }
-   
+
    /**
     * Fail 4 times, then pass indefinitely.
     */
@@ -415,7 +435,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          throw new AlertinatorCriticalException('Fail Five Times Test');
       }
    }
-   
+
    /**
     * Alternates between 3 fail/3 passes for 4 6-check cycles, then passes indefinitely.
    */
@@ -463,7 +483,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
 
       $this->assertEquals($expected, $output);
    }
-   
+
    /**
     * Seems silly, but failure and reset messages have timestamps in the middle
     * of them which would be cumbersome to persist. Instead, we can check the
