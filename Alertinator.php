@@ -161,7 +161,7 @@ class Alertinator {
       }
    }
 
-   protected function alertGroups(Exception $exception, iterable $alerteeGroups) {
+   public function alertGroups(Exception $exception, iterable $alerteeGroups) {
       $alertees = $this->extractAlertees($alerteeGroups);
       foreach ($alertees as $alertee) {
          $this->alert($exception, $this->alertees[$alertee]);
