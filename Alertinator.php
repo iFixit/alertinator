@@ -33,6 +33,7 @@ class Alertinator {
    const ALL = 7;      // 111
 
    const CONFERENCE_NAME = 'Alert';
+   const CONFERENCE_MESSAGE = 'Connecting to conference call.';
 
    public $twilio;
    public $checks;
@@ -237,6 +238,7 @@ class Alertinator {
    protected function call(string $number, string $message): void {
       $twiml = new VoiceResponse();
       $twiml->say($message);
+      $twiml->say(self::CONFERENCE_MESSAGE);
       $twiml->dial()->conference(self::CONFERENCE_NAME);
 
       $number = '+1' . $number;

@@ -168,6 +168,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       ];
       $twiml = new VoiceResponse();
       $twiml->say('foobaz');
+      $twiml->say(Alertinator::CONFERENCE_MESSAGE);
       $twiml->dial()->conference(Alertinator::CONFERENCE_NAME);
 
       $this->expectOutputEquals(
