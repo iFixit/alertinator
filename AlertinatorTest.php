@@ -137,48 +137,53 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
    }
 
    public function test_alert() {
-      $this->alertinator->twilio['fromNumber'] = '1234567890';
+      $message = 'foobaz';
+      $fromNumber = '1111111111';
+      $toNumber = '2222222222';
+      $toEmail = 'foo@example.com';
+
+      $this->alertinator->twilio['fromNumber'] = $fromNumber;
 
       // One level that's exactly right.
-      $alertees = ['email' => ['foo@example.com', Alertinator::WARNING]];
+      $alertees = ['email' => [$toEmail, Alertinator::WARNING]];
       $this->expectOutputEquals(
-         "Sending message foobaz to foo@example.com via email.\n",
+         "Sending message $message to $toEmail via email.\n",
          [$this->alertinator, 'alert'],
-         [new AlertinatorWarningException('foobaz'), $alertees]
+         [new AlertinatorWarningException($message), $alertees]
       );
 
       // Non-matching levels.
       $this->expectOutputEquals(
          '',
          [$this->alertinator, 'alert'],
-         [new AlertinatorCriticalException('foobaz'), $alertees]
+         [new AlertinatorCriticalException($message), $alertees]
       );
 
       // Multiple levels associated with an alerting method.
       $alertees = ['email' => [
-         'foo@example.com', Alertinator::WARNING | Alertinator::CRITICAL
+         $toEmail, Alertinator::WARNING | Alertinator::CRITICAL
       ]];
       $this->expectOutputEquals(
-         "Sending message foobaz to foo@example.com via email.\n",
+         "Sending message $message to $toEmail via email.\n",
          [$this->alertinator, 'alert'],
-         [new AlertinatorWarningException('foobaz'), $alertees]
+         [new AlertinatorWarningException($message), $alertees]
       );
 
       // Multiple methods.
       $alertees = [
-         'email' => ['foo@example.com', Alertinator::WARNING],
-         'sms' => ['1234567890', Alertinator::WARNING],
-         'call' => ['1234567890', Alertinator::WARNING],
+         'email' => [$toEmail, Alertinator::WARNING],
+         'sms' => [$toNumber, Alertinator::WARNING],
+         'call' => [$toNumber, Alertinator::WARNING],
       ];
 
-      $twiml = $this->alertinator->getTwiML('foobaz');
-      $this->assertStringContainsString('foobaz', $twiml);
+      $twiml = $this->alertinator->getTwiML($message);
+      $this->assertStringContainsString($message, $twiml);
       $this->expectOutputEquals(
-         "Sending message foobaz to foo@example.com via email.\n"
-         . "Sending message foobaz to 1234567890 via sms.\n"
-         . "Sending message with TwiML $twiml to +11234567890 via call.\n",
+         "Sending message $message to $toEmail via email.\n"
+         . "Sending message $message to $toNumber via sms.\n"
+         . "Sending message with TwiML $twiml to +1$toNumber via call.\n",
          [$this->alertinator, 'alert'],
-         [new AlertinatorWarningException('foobaz'), $alertees]
+         [new AlertinatorWarningException($message), $alertees]
       );
    }
 
