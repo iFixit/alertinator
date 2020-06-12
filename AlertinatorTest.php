@@ -36,6 +36,10 @@ class AlertinatorMocker extends Alertinator {
    public function getTwilioCall(): CallList {
       return new TwilioCallsMocker();
    }
+
+   public function getTwiML(string $message): VoiceResponse {
+      return parent::getTwiML($message);
+   }
 }
 
 class MockMessage extends MessageInstance {
@@ -166,11 +170,9 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
          'sms' => ['1234567890', Alertinator::WARNING],
          'call' => ['1234567890', Alertinator::WARNING],
       ];
-      $twiml = new VoiceResponse();
-      $twiml->say('foobaz');
-      $twiml->say(Alertinator::CONFERENCE_MESSAGE);
-      $twiml->dial()->conference(Alertinator::CONFERENCE_NAME);
 
+      $twiml = $this->alertinator->getTwiML('foobaz');
+      $this->assertStringContainsString('foobaz', $twiml);
       $this->expectOutputEquals(
          "Sending message foobaz to foo@example.com via email.\n"
          . "Sending message foobaz to 1234567890 via sms.\n"

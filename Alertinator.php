@@ -242,14 +242,18 @@ class Alertinator {
     * ``$message``.
     */
    protected function call(string $number, string $message): void {
+      $twiml = $this->getTwiML($message);
+      $number = '+1' . $number;
+      $this->getTwilioCall()->create(
+       $number, $this->twilio['fromNumber'], ['Twiml' => $twiml]);
+   }
+
+   protected function getTwiML(string $message): VoiceResponse {
       $twiml = new VoiceResponse();
       $twiml->say($message);
       $twiml->say(self::CONFERENCE_MESSAGE);
       $twiml->dial()->conference(self::CONFERENCE_NAME);
-
-      $number = '+1' . $number;
-      $this->getTwilioCall()->create(
-       $number, $this->twilio['fromNumber'], ['Twiml' => $twiml]);
+      return $twiml;
    }
 
    /**
