@@ -21,8 +21,8 @@ class AlertinatorMocker extends Alertinator {
       return parent::extractAlertees($alerteeGroups);
    }
 
-   public function alert(AlertinatorException $exception, iterable $alertee): void {
-      parent::alert($exception, $alertee);
+   public function alert(AlertinatorException $exception, iterable $alertee, string $textPrefix = null): void {
+      parent::alert($exception, $alertee, $textPrefix);
    }
 
    public function email(string $address, string $message): void {
