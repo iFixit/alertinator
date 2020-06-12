@@ -206,6 +206,7 @@ class Alertinator {
       foreach ($alertee as $contactMethod => [$destination, $alertingLevel]) {
          if ($exception::bitmask & $alertingLevel) {
             $message = $exception->getMessage();
+
             if ($contactMethod !== 'call') {
                $message = $textPrefix . $message;
             }
@@ -213,6 +214,13 @@ class Alertinator {
             $this->$contactMethod($destination, $message);
          }
       }
+   }
+
+   /**
+    * This will preceed every voice alert.
+    */
+   protected function getVoicePrefix(): string {
+      return 'Alertinator! ';
    }
 
    /**
@@ -250,6 +258,7 @@ class Alertinator {
 
    protected function getTwiML(string $message): VoiceResponse {
       $twiml = new VoiceResponse();
+      $twiml->say($this->getVoicePrefix());
       $twiml->say($message);
       $twiml->say(self::CONFERENCE_MESSAGE);
       $twiml->dial()->conference(self::CONFERENCE_NAME);
