@@ -168,7 +168,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
       ];
       $twiml = new VoiceResponse();
       $twiml->say('foobaz');
-      $twiml->hangup();
+      $twiml->dial()->conference(Alertinator::CONFERENCE_NAME);
 
       $this->expectOutputEquals(
          "Sending message foobaz to foo@example.com via email.\n"

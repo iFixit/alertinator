@@ -32,6 +32,8 @@ class Alertinator {
    const CRITICAL = 4; // 100
    const ALL = 7;      // 111
 
+   const CONFERENCE_NAME = 'Alert';
+
    public $twilio;
    public $checks;
    public $groups;
@@ -235,7 +237,7 @@ class Alertinator {
    protected function call(string $number, string $message): void {
       $twiml = new VoiceResponse();
       $twiml->say($message);
-      $twiml->hangup();
+      $twiml->dial()->conference(self::CONFERENCE_NAME);
 
       $number = '+1' . $number;
       $this->getTwilioCall()->create(
