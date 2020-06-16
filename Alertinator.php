@@ -259,6 +259,7 @@ class Alertinator {
       $twiml = new VoiceResponse();
       $twiml->say($this->getVoicePrefix());
       $twiml->say($message);
+      $twiml->pause(['length' => 1]);
 
       // Connect the user to the conference call only if they press a
       // digit on the phone. This seems more reliable than answering machine
