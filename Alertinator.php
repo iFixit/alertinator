@@ -32,9 +32,6 @@ class Alertinator {
    const CRITICAL = 4; // 100
    const ALL = 7;      // 111
 
-   const CONFERENCE_NAME = 'Alert';
-   const CONFERENCE_MESSAGE = 'Connecting to conference call.';
-
    public $twilio;
    public $checks;
    public $groups;
@@ -252,16 +249,25 @@ class Alertinator {
    protected function call(string $number, string $message): void {
       $twiml = $this->getTwiML($message);
       $number = '+1' . $number;
-      $this->getTwilioCall()->create(
-       $number, $this->twilio['fromNumber'], ['Twiml' => $twiml]);
+      $this->getTwilioCall()->create($number, $this->twilio['fromNumber'], [
+         'Twiml' => $twiml,
+         'machineDetection' => 'Enable',
+      ]);
    }
 
    protected function getTwiML(string $message): VoiceResponse {
       $twiml = new VoiceResponse();
       $twiml->say($this->getVoicePrefix());
       $twiml->say($message);
-      $twiml->say(self::CONFERENCE_MESSAGE);
-      $twiml->dial()->conference(self::CONFERENCE_NAME);
+
+      // Connect the user to the conference call only if they press a
+      // digit on the phone. This seems more reliable than answering machine
+      // detection.
+      $gather = $twiml->gather([
+         'action' => 'https://handler.twilio.com/twiml/EHf60b496ecfab6bd73cc23f13e97c8f66',
+         'numDigits' => 1,
+      ]);
+      $gather->say('Press any digit to connect to conference');
       return $twiml;
    }
 
