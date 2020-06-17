@@ -151,17 +151,26 @@ class Alertinator {
 
       if ($atAlertThreshold || ($pastAlertThreshold && $remindThisInterval)) {
          $last = end($log);
-         $newMsg = "Threshold of $alertAfter reached at "
+         $textPrefix = "Threshold of $alertAfter reached at "
           . date(DATE_RFC2822, $last['ts']) . $reminderNotification . ": ";
-         $e = $this->prependExceptionMessage($newMsg, $e);
-         $this->alertGroups($e, $alerteeGroups);
+         $this->alertGroups($e, $alerteeGroups, $textPrefix);
       }
    }
 
-   protected function alertGroups(Exception $exception, iterable $alerteeGroups) {
+   /**
+    * Alert one or more alertee groups.
+    *
+    * :param AlertinatorException $exception: The exception containing
+    *                                         information about the alert.
+    * :param iterable $alerteeGroups: An array of group names.
+    * :param ?string $textPrefix: A prefix to apply to the exception message
+    *      in textual contact methods only. This is meant to allow more detailed
+    *      reporting without wasting time during voice calls.
+    */
+   public function alertGroups(Exception $exception, iterable $alerteeGroups, string $textPrefix = null) {
       $alertees = $this->extractAlertees($alerteeGroups);
       foreach ($alertees as $alertee) {
-         $this->alert($exception, $this->alertees[$alertee]);
+         $this->alert($exception, $this->alertees[$alertee], $textPrefix);
       }
    }
 
@@ -186,24 +195,29 @@ class Alertinator {
     *                                         information about the alert.
     * :param array $alertee: An array describing an alertee in the format
     *                        of ``$this->alertees``.
+    * :param ?string $textPrefix: A prefix to apply to the exception message
+    *      in textual contact methods only. This is meant to allow more detailed
+    *      reporting without wasting time during voice calls.
     */
-   protected function alert(AlertinatorException $exception, iterable $alertee): void {
-      foreach (array_keys($alertee) as $contactMethod) {
-         list($destination, $alertingLevel) = $alertee[$contactMethod];
+   protected function alert(AlertinatorException $exception, iterable $alertee, string $textPrefix = null): void {
+      foreach ($alertee as $contactMethod => [$destination, $alertingLevel]) {
          if ($exception::bitmask & $alertingLevel) {
-            $this->$contactMethod($destination, $exception->getMessage());
+            $message = $exception->getMessage();
+
+            if ($contactMethod !== 'call') {
+               $message = $textPrefix . $message;
+            }
+
+            $this->$contactMethod($destination, $message);
          }
       }
    }
 
    /**
-    * We sometimes need to modify the Exception's message for threshold alerts.
-   */
-   private function prependExceptionMessage(string $newMessage, Exception $e): Exception {
-      $oldMsg = $e->getMessage();
-      $newMsg = $newMessage . $oldMsg;
-      $eClass = get_class($e);
-      return new $eClass($newMsg);
+    * This will preceed every voice alert.
+    */
+   protected function getVoicePrefix(): string {
+      return 'Alertinator! ';
    }
 
    /**
@@ -233,13 +247,29 @@ class Alertinator {
     * ``$message``.
     */
    protected function call(string $number, string $message): void {
-      $twiml = new VoiceResponse();
-      $twiml->say($message);
-      $twiml->hangup();
-
+      $twiml = $this->getTwiML($message);
       $number = '+1' . $number;
-      $this->getTwilioCall()->create(
-       $number, $this->twilio['fromNumber'], ['Twiml' => $twiml]);
+      $this->getTwilioCall()->create($number, $this->twilio['fromNumber'], [
+         'Twiml' => $twiml,
+         'machineDetection' => 'Enable',
+      ]);
+   }
+
+   protected function getTwiML(string $message): VoiceResponse {
+      $twiml = new VoiceResponse();
+      $twiml->say($this->getVoicePrefix());
+      $twiml->say($message);
+      $twiml->pause(['length' => 1]);
+
+      // Connect the user to the conference call only if they press a
+      // digit on the phone. This seems more reliable than answering machine
+      // detection.
+      $gather = $twiml->gather([
+         'action' => 'https://handler.twilio.com/twiml/EHf60b496ecfab6bd73cc23f13e97c8f66',
+         'numDigits' => 1,
+      ]);
+      $gather->say('Press any digit to connect to conference');
+      return $twiml;
    }
 
    /**
