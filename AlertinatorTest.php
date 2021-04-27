@@ -477,7 +477,7 @@ class AlertinatorTest extends PHPUnit\Framework\TestCase {
     * This is an example of an alert-checking function with an error in it.
     */
    public static function buggyCheck() {
-      sdf;
+      trigger_error('sdf', E_USER_WARNING);
    }
 
    /**
