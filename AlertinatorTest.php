@@ -71,6 +71,8 @@ class TwilioCallsMocker extends CallList {
 }
 
 class AlertinatorTest extends PHPUnit\Framework\TestCase {
+   private $alertinator;
+
    protected function setUp(): void {
       date_default_timezone_set("America/Los_Angeles");
       // Create an Alertinator with just enough config to construct.
