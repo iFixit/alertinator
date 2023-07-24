@@ -36,6 +36,7 @@ class Alertinator {
    public $checks;
    public $groups;
    public $alertees;
+   public $logger;
    public $emailSubject = 'Alert';
 
    protected $_twilio;
